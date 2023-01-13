@@ -1,0 +1,31 @@
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+
+[tool.aerich]
+tortoise_orm = "oddsapi.settings.TORTOISE_ORM_CONFIG"
+location = "./migrations"
+src_folder = "./."
+
+[tool.pdm.scripts]
+cli = {call = 'oddsapi.cli:main'}
+
+[project]
+name = ""
+version = ""
+description = ""
+dependencies = [
+    "python-dotenv>=0.21.0",
+    "uvloop>=0.17.0",
+    "redis>=4.4.1",
+    "tortoise-orm[asyncpg]>=0.19.2",
+    "aerich>=0.7.1",
+    "click>=8.1.3",
+    "httpx>=0.23.1",
+    "pyrogram>=2.0.93",
+    "arq>=0.25.0",
+    "tgcrypto>=1.2.5",
+    "plotly>=5.11.0",
+    "numpy>=1.24.1",
+    "kaleido==0.2.1",
+]
+requires-python = ">=3.11"

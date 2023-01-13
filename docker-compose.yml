@@ -1,0 +1,45 @@
+version: "3"
+volumes:
+  redis_data:
+  postgres_data:
+
+services:
+  redis:
+    container_name: oddsapi_redis
+    image: redis:7-alpine
+    command: >
+      --requirepass ${REDIS_PASSWORD}
+    ports:
+      - ${REDIS_PORT}:6379
+    volumes:
+      - redis_data:/data
+    environment:
+      TZ: Europe/Moscow
+    networks:
+      - oddsapi
+
+  postgres:
+    container_name: oddsapi_postgres
+    working_dir: /dumps
+    image: postgres:15-alpine
+    environment:
+      TZ: Europe/Moscow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: oddsapi
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./docker/dumps:/dumps
+    ports:
+      - ${POSTGRES_PORT}:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oddsapi
+
+networks:
+  oddsapi:
+    external: true
+    driver: bridge

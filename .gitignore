@@ -1,0 +1,7 @@
+.idea
+.venv
+.ruff_cache
+.env
+
+*.session
+*.session-journal

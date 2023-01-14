@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 
 from oddsapi.db import init_db, redis_connect
 from oddsapi.models import Fixture
+from oddsapi.settings import DEVIATION_THRESHOLD
 
 
 def format_fixture(f: Fixture) -> list:
@@ -62,7 +63,7 @@ async def filter_fixtures() -> list[Fixture] | None:
     or abs(draw - avg_draw) > ((avg_draw/100) * $threshold)
     )
     group by f.id;"""
-    ).substitute(threshold=20)
+    ).substitute(threshold=DEVIATION_THRESHOLD)
 
     fixtures = await Fixture.all().prefetch_related("bets").raw(sql)
 

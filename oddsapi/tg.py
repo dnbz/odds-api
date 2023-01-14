@@ -12,13 +12,11 @@ from .report import (
     get_unnotified_fixtures,
     get_cache_img,
 )
-from .settings import TG_BOT_NAME, TG_BOT_TOKEN, TG_API_ID, TG_API_HASH
+from .settings import TG_BOT_NAME, TG_BOT_TOKEN, TG_API_ID, TG_API_HASH, TG_CHANNEL
 
 app = Client(
     TG_BOT_NAME, bot_token=TG_BOT_TOKEN, api_id=TG_API_ID, api_hash=TG_API_HASH
 )
-CHAT_ID = "bet_monitor"
-
 
 @app.on_message(filters.text & filters.private)
 async def echo(client, message):
@@ -48,7 +46,7 @@ async def notify():
     photo = gen_img(fig)
 
     async with app:
-        await app.send_photo(chat_id=CHAT_ID, caption=msg, photo=photo)
+        await app.send_photo(chat_id=TG_CHANNEL, caption=msg, photo=photo)
 
     for notification in notifications:
         notification.sent_at = time_now()
@@ -59,14 +57,18 @@ async def async_main():
     await init_db()
     await notify()
 
-    # start/stop pyrogram manually since there is no middleware for handling redis connection
-    await app.start()
-    app.redis_connection = await redis_connect()
-    await idle()
-    await app.redis_connection.close()
-    await app.stop()
+    # # start/stop pyrogram manually since there is no middleware for handling redis connection
+    # await app.start()
+    # app.redis_connection = await redis_connect()
+    # await idle()
+    # await app.redis_connection.close()
+    # await app.stop()
+
+
+def main():
+    loop = asyncio.get_event_loop()
+    run = loop.run_until_complete(async_main())
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    run = loop.run_until_complete(async_main())
+    main()

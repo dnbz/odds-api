@@ -7,7 +7,11 @@ location = "./migrations"
 src_folder = "./."
 
 [tool.pdm.scripts]
-cli = {call = 'oddsapi.cli:main'}
+import = { call = 'oddsapi.main:main' }
+import-static = { call = 'oddsapi.main:run_import_static' }
+tgbot = { call = 'oddsapi.tg:main' }
+parser-listener = { call = 'oddsapi.parser_listener:main'}
+worker = "arq oddsapi.queu.WorkerSettings"
 
 [project]
 name = ""

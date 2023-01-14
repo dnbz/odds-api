@@ -68,6 +68,10 @@ async def async_main():
     await client.close()
 
 
-if __name__ == "__main__":
+def main():
     loop = asyncio.new_event_loop()
     run = loop.run_until_complete(async_main())
+
+
+if __name__ == "__main__":
+    main()

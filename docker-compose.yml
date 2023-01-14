@@ -32,12 +32,36 @@ services:
     ports:
       - ${POSTGRES_PORT}:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - oddsapi
+
+#  tgbot:
+#    container_name: oddsapi_tgbot
+#    working_dir: /app
+#    #    build: ./
+#    env_file: .env
+#    networks:
+#      - oddsapi
+#
+#  queue-runner:
+#    container_name: oddsapi_queue
+#    working_dir: /app
+#    #    build: ./
+#    env_file: .env
+#    networks:
+#      - oddsapi
+#
+#  writer:
+#    container_name: oddsapi_writer
+#    working_dir: /app
+#    #    build: ./
+#    env_file: .env
+#    networks:
+#      - oddsapi
 
 networks:
   oddsapi:

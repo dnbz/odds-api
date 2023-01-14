@@ -1,9 +1,10 @@
 import asyncio
 import logging
 
+import httpx
 from httpx import AsyncClient
 
-from .settings import API_URL, API_KEY, API_HOST
+from .settings import API_URL, API_KEY, API_HOST, HTTPX_PROXY
 
 
 def get_api_url(path: str) -> str:
@@ -16,14 +17,17 @@ def get_rapidapi_headers() -> dict:
     return headers
 
 
-async def gather_with_concurrency(n, *coros):
-    semaphore = asyncio.Semaphore(n)
+def get_httpx_config() -> dict:
+    headers = get_rapidapi_headers()
+    proxies = get_httpx_proxy()
+    limits = httpx.Limits(max_connections=4, max_keepalive_connections=3)
 
-    async def sem_coro(coro):
-        async with semaphore:
-            return await coro
+    return {"headers": headers, "proxies": proxies, "limits": limits, "timeout": 10.0}
 
-    return await asyncio.gather(*(sem_coro(c) for c in coros))
+
+def get_httpx_proxy():
+    proxy = HTTPX_PROXY
+    return f"http://{proxy}"
 
 
 async def get_leagues(client: AsyncClient):

@@ -14,6 +14,8 @@ from .api_client import (
     get_fixtures_by_date,
     get_bets_pagination,
     get_bets_by_date,
+    get_httpx_proxy,
+    get_httpx_config,
 )
 from .db_import import (
     add_team,
@@ -85,10 +87,7 @@ async def load_bets(delete=False):
     days = BET_PARSE_DAYS
     dates = [(date_now + day * i).strftime("%Y-%m-%d") for i in range(days)]
 
-    limits = httpx.Limits(max_connections=6, max_keepalive_connections=3)
-    async with httpx.AsyncClient(
-        headers=get_rapidapi_headers(), limits=limits
-    ) as client:
+    async with httpx.AsyncClient(**get_httpx_config()) as client:
         load_bets_by_date_coros = [load_bets_by_date(client, date) for date in dates]
         await asyncio.gather(*load_bets_by_date_coros)
 
@@ -112,10 +111,7 @@ async def load_fixtures(delete=False):
     days = FIXTURE_PARSE_DAYS
     dates = [(date_now + day * i).strftime("%Y-%m-%d") for i in range(days)]
 
-    limits = httpx.Limits(max_connections=5, max_keepalive_connections=3)
-    async with httpx.AsyncClient(
-        headers=get_rapidapi_headers(), limits=limits
-    ) as client:
+    async with httpx.AsyncClient(**get_httpx_config()) as client:
         load_fixtures_by_date_coros = [
             load_fixtures_by_date(client, date) for date in dates
         ]
@@ -123,7 +119,7 @@ async def load_fixtures(delete=False):
 
 
 async def load_bookmakers(delete=False):
-    async with httpx.AsyncClient(headers=get_rapidapi_headers()) as client:
+    async with httpx.AsyncClient(**get_httpx_config()) as client:
         bookmakers = await get_bookmakers(client)
 
     if delete:
@@ -153,10 +149,7 @@ async def load_teams(delete=False):
     if not countries:
         logging.warning("No countries found. Can't import teams...")
 
-    limits = httpx.Limits(max_connections=5, max_keepalive_connections=3)
-    async with httpx.AsyncClient(
-        headers=get_rapidapi_headers(), limits=limits
-    ) as client:
+    async with httpx.AsyncClient(**get_httpx_config()) as client:
         load_teams_by_country_coros = [
             load_teams_by_country(client, country=country) for country in countries
         ]
@@ -168,7 +161,7 @@ async def load_countries(delete=False):
         logging.info("Delete flag passed. Deleting existing countries...")
         await Country.all().delete()
 
-    async with httpx.AsyncClient(headers=get_rapidapi_headers()) as client:
+    async with httpx.AsyncClient(**get_httpx_config()) as client:
         countries = await get_countries(client)
 
     add_country_coros = [add_country(country) for country in countries]
@@ -183,7 +176,7 @@ async def load_leagues(delete=False):
         logging.info("Delete flag passed. Deleting existing leagues...")
         await League.all().delete()
 
-    async with httpx.AsyncClient(headers=get_rapidapi_headers()) as client:
+    async with httpx.AsyncClient(**get_httpx_config()) as client:
         leagues = await get_leagues(client)
 
     add_league_coros = [add_league(league) for league in leagues]

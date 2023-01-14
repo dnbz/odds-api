@@ -68,13 +68,12 @@ class WorkerSettings:
     on_shutdown = shutdown
     redis_settings = get_redis_settings()
 
-    min, sec = get_min_sec()
+    # debug run time
+    # min, sec = get_min_sec()
     cron_jobs = [
         cron(update_static, hour={22}, minute=15),
         # odd hours
-        # cron(update_matches, hour={hour for hour in range(1, 24, 2)}, minute=35),
-        # cron(update_matches, hour=None, minute=20),
+        cron(update_matches, hour={hour for hour in range(1, 24, 2)}, minute=35),
         # every 10 min.
-        # cron(notify, hour=None, minute={minute for minute in range(1, 60, 10)}),
-        cron(notify, hour=None, minute=min, second=sec),
+        cron(notify, hour=None, minute={minute for minute in range(1, 60, 10)}),
     ]

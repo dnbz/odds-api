@@ -39,8 +39,8 @@ async def reader(client: Redis):
     }
 
     count = 0
-    # while True:
-    while count < 800:
+    while True:
+        # while count < 800:
         event = await get_event(client)
         status = await process_event(event)
 
@@ -92,13 +92,13 @@ async def process_event(event: BetcityEvent) -> ProcessStatus:
 
 async def get_event(client: Redis) -> BetcityEvent:
     queue = "betcity"
-    # data = await client.brpop([queue])
-    data = await client.blmove(
-        "betcity", "betcity", timeout=0, src="RIGHT", dest="LEFT"
-    )
+    data = await client.brpop([queue])
+    # data = await client.blmove(
+    #     "betcity", "betcity", timeout=0, src="RIGHT", dest="LEFT"
+    # )
 
-    event = BetcityEvent(**json.loads(data))
-    # event = BetcityEvent(**json.loads(data[1]))
+    # event = BetcityEvent(**json.loads(data))
+    event = BetcityEvent(**json.loads(data[1]))
     return event
 
 

@@ -52,7 +52,7 @@ async def notify():
     photo.name = "plot.png"
 
     async with app:
-        await app.send_document(chat_id=TG_CHANNEL, caption=msg, document=photo)
+        await app.send_photo(chat_id=TG_CHANNEL, caption=msg, photo=photo)
 
     for notification in notifications:
         notification.sent_at = time_now()

@@ -14,11 +14,11 @@ from .loaders import (
     load_static,
     load_matches,
 )
-from .settings import REDIS_PASSWORD
+from .settings import REDIS_PASSWORD, REDIS_HOST
 
 
 def get_redis_settings() -> RedisSettings:
-    return RedisSettings(password=REDIS_PASSWORD, database=RedisDB.WORKER_QUEUE)
+    return RedisSettings(password=REDIS_PASSWORD, database=RedisDB.WORKER_QUEUE, host=REDIS_HOST)
 
 
 async def download_content(ctx, url):

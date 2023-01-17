@@ -36,7 +36,8 @@ DB_CONNECTION = os.environ.get(
 
 TORTOISE_ORM_CONFIG = {
     "connections": {
-        "default": "postgres://postgres:Aif3eireuri6Ohriitohji2Oh@localhost:5478/oddsapi"
+        # "default": "postgres://postgres:Aif3eireuri6Ohriitohji2Oh@localhost:5478/oddsapi"
+        "default": DB_CONNECTION
     },
     "apps": {
         "models": {

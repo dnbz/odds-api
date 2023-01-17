@@ -9,7 +9,7 @@ src_folder = "./."
 [tool.pdm.scripts]
 import = { call = 'oddsapi.main:main' }
 import-static = { call = 'oddsapi.main:run_import_static' }
-worker = "arq oddsapi.queu.WorkerSettings"
+worker = "arq oddsapi.queue.WorkerSettings"
 
 tg-bot = { call = 'oddsapi.tg:main' }
 tg-notify = { call = 'oddsapi.tg:run_tg_notify' }
@@ -38,5 +38,7 @@ dependencies = [
     "numpy>=1.24.1",
     "kaleido==0.2.1",
     "dateparser>=1.1.6",
+    "Pillow>=9.4.0",
+    "psycopg2-binary>=2.9.5",
 ]
 requires-python = ">=3.11"

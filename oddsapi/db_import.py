@@ -210,6 +210,7 @@ async def add_betcity_bet(
     await fixture.fetch_related("bets")
 
     b = None
+    update = False
     for fixture_bet in fixture.bets:
         if fixture_bet.bookmaker == "betcity":
             logging.info(

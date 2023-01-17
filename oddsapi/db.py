@@ -36,10 +36,7 @@ def redis_connect(db=RedisDB.MAIN_CACHE):
     # number literal works fine however
     db = str(db)
 
-    if APP_ENV == "dev":
-        host = "127.0.0.1"
-    else:
-        host = REDIS_HOST
+    host = REDIS_HOST
 
     connection = redis.Redis(
         host=host, password=REDIS_PASSWORD, port=REDIS_PORT, db=db

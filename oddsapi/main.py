@@ -20,7 +20,7 @@ def async_run(func: Callable):
 async def import_matches():
     await init_db()
     # await load_static()
-    await load_matches(delete=True)
+    await load_matches()
 
 
 async def import_static():

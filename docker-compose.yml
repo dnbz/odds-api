@@ -39,29 +39,35 @@ services:
     networks:
       - oddsapi
 
-#  tgbot:
-#    container_name: oddsapi_tgbot
-#    working_dir: /app
-#    #    build: ./
-#    env_file: .env
-#    networks:
-#      - oddsapi
-#
-#  queue-runner:
-#    container_name: oddsapi_queue
-#    working_dir: /app
-#    #    build: ./
-#    env_file: .env
-#    networks:
-#      - oddsapi
-#
-#  writer:
-#    container_name: oddsapi_writer
-#    working_dir: /app
-#    #    build: ./
-#    env_file: .env
-#    networks:
-#      - oddsapi
+  tgbot:
+    container_name: oddsapi_tgbot
+    build: ./
+    env_file: .env.prod
+    entrypoint: ./entrypoint-tgbot.sh
+    environment:
+      TZ: Europe/Moscow
+    networks:
+      - oddsapi
+
+  queue-worker:
+    container_name: oddsapi_worker
+    build: ./
+    env_file: .env.prod
+    entrypoint: ./entrypoint-worker.sh
+    environment:
+      TZ: Europe/Moscow
+    networks:
+      - oddsapi
+
+  parser-listener:
+    container_name: oddsapi_listener
+    build: ./
+    env_file: .env.prod
+    entrypoint: ./entrypoint-parser-listener.sh
+    environment:
+      TZ: Europe/Moscow
+    networks:
+      - oddsapi
 
 networks:
   oddsapi:

@@ -1,0 +1,3 @@
+docker
+.venv
+.ruff_cache

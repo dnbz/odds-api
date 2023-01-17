@@ -48,6 +48,10 @@ async def load_static(delete=False):
 
 
 async def load_matches(delete=False):
+    if delete:
+        logging.info("Delete flag passed. Deleting existing bets...")
+        await Bet.all().delete()
+
     await load_fixtures(delete=delete)
     await load_bets(delete=delete)
 

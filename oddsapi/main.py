@@ -1,16 +1,13 @@
 import asyncio
-import logging
 from typing import Callable
 
+from .helpers import configure_logging
+
 from .db import init_db
-from .tg import async_main as run_tgbot
 from .loaders import (
     load_matches,
     load_static,
 )
-
-def configure_logging():
-    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", level=logging.INFO)
 
 configure_logging()
 
@@ -23,7 +20,7 @@ def async_run(func: Callable):
 async def import_matches():
     await init_db()
     # await load_static()
-    await load_matches()
+    await load_matches(delete=True)
 
 
 async def import_static():
@@ -32,13 +29,12 @@ async def import_static():
     # await load_matches()
 
 
+
 def main():
     async_run(import_matches)
 
 
+
+
 def run_import_static():
     async_run(import_static)
-
-
-def tgbot():
-    async_run(run_tgbot)

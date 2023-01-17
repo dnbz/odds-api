@@ -1,9 +1,12 @@
 import asyncio
 import logging
-from datetime import datetime
+import pytz
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from tortoise.expressions import Q
 
+from .helpers import time_now
 from .models import League, Season, Country, Team, Bookmaker, Fixture, Bet
 
 
@@ -187,3 +190,66 @@ async def add_season(season: dict, league: League):
         s.odds_coverage = season["coverage"]["odds"]
 
     await s.save()
+
+
+@dataclass(slots=False)
+class BetcityEvent:
+    event_url: str
+    event_list_url: str
+    datetime: str
+    home_team_name: str
+    away_team_name: str
+    home_team: float
+    draw: float
+    away_team: float
+
+
+async def add_betcity_bet(
+    event: BetcityEvent, date: datetime, fixture: Fixture
+) -> bool:
+    await fixture.fetch_related("bets")
+
+    b = None
+    for fixture_bet in fixture.bets:
+        if fixture_bet.bookmaker == "betcity":
+            logging.info(
+                f"This betcity bet is already in db for fixture with id {fixture.id}. Updating..."
+            )
+            update = True
+            b = fixture_bet
+
+    five_min_ago = datetime.now() - timedelta(minutes=5)
+    if (
+        b is not None
+        and (b.home_win != event.home_team)
+        and (b.updated_at.replace(tzinfo=None) > five_min_ago)
+    ):
+        logging.warning(
+            f"This betcity bet was modified less than five minutes ago"
+            f" and now we are trying to update it with values different from previous one."
+            f"This could be a bug."
+        )
+
+    if not b:
+        update = False
+        b = Bet()
+        b.fixture = fixture
+        b.bookmaker = "betcity"
+        b.source = "betcity-parser"
+        b.source_update = date
+
+        logging.info(f"Adding bet from betcity for fixture with id {fixture.id}...")
+
+    b.home_win = event.home_team
+    b.draw = event.draw
+    b.away_win = event.away_team
+
+    # b.total_over25 = float(total["odd"])
+    # b.total_under25 = float(total["odd"])
+
+    await b.save()
+    logging.log(
+        5, f"imported bet for betcity wihh fixture id {fixture.id} successfully"
+    )
+
+    return update

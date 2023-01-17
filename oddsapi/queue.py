@@ -6,8 +6,7 @@ from arq.connections import RedisSettings
 
 from oddsapi.db import RedisDB, init_db
 from .api_client import get_httpx_config
-from .helpers import time_now
-from .main import configure_logging
+from .helpers import time_now, configure_logging
 from .tg import notify as tg_notify
 from httpx import AsyncClient
 

@@ -9,9 +9,13 @@ src_folder = "./."
 [tool.pdm.scripts]
 import = { call = 'oddsapi.main:main' }
 import-static = { call = 'oddsapi.main:run_import_static' }
-tgbot = { call = 'oddsapi.tg:main' }
-parser-listener = { call = 'oddsapi.parser_listener:main'}
 worker = "arq oddsapi.queu.WorkerSettings"
+
+tg-bot = { call = 'oddsapi.tg:main' }
+tg-notify = { call = 'oddsapi.tg:run_tg_notify' }
+tg-clean-notify = { call = 'oddsapi.tg:run_tg_clean_notify' }
+
+parser-listener = { call = 'oddsapi.parser_listener:main'}
 
 [project]
 name = ""
@@ -28,8 +32,11 @@ dependencies = [
     "pyrogram>=2.0.93",
     "arq>=0.25.0",
     "tgcrypto>=1.2.5",
+    "psycopg[binary]>=3.1.7",
+    # plotly and deps
     "plotly>=5.11.0",
     "numpy>=1.24.1",
     "kaleido==0.2.1",
+    "dateparser>=1.1.6",
 ]
 requires-python = ">=3.11"

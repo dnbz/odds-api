@@ -170,21 +170,30 @@ def prepate_text(text: str) -> str:
     words = text.split(" ")
 
     if len(words) < 2:
-        result = sanitize(f"%{words[0]}%")
+        string = sanitize(words[0])
+        result = f"%{string}%"
 
     words = [word for word in words if len(word) > 3]
 
     result = "|".join(words)
-    return sanitize(f"%({result})%")
+
+    string = sanitize(result)
+    return f"%({string})%"
 
 
 def sanitize(string: str) -> str:
     try:
-        res = adapt(string)
-        return res.adapted
+        qs = adapt(string)
+        return str(qs)
     except UnicodeEncodeError:
-        print(f"Couldn't encode string {string}")
+        logging.warning(f"Couldn't encode string {string}")
         traceback.print_exc()
+
+        qs = adapt(string)
+        qs.encoding = 'utf-8'
+        return str(qs)
+
+        # It's odd that psycopg2 even uses latin-1
 
 
 async def async_main():

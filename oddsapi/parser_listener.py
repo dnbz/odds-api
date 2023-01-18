@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import time
+import traceback
 
 from datetime import datetime
 from enum import IntEnum
@@ -183,7 +184,9 @@ def sanitize(string: str) -> str:
         return res
     except UnicodeEncodeError:
         print(f"Couldn't encode string {string}")
-        raise
+        traceback.print_exc()
+        return string
+        # raise
 
 
 async def async_main():

@@ -20,3 +20,10 @@ Receives data about new events from redis queue(`lpush` + `rpop`)
 Matches with the events from [football-api](https://rapidapi.com/api-sports/api/API-FOOTBALL)
 
 Checks for duplicates and writes data in correct format
+
+
+# Setup
+This project is deployed using `docker-compose`
+
+Fill in/copy `./.env` and `./.env.prod` with correct values prior to running the project.
+All the relevant fields are described in `settings.py` 

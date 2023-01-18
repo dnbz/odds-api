@@ -39,6 +39,16 @@ services:
     networks:
       - oddsapi
 
+  queue-worker:
+    container_name: oddsapi_worker
+    build: ./
+    env_file: .env.prod
+    entrypoint: ./entrypoint-worker.sh
+    environment:
+      TZ: Europe/Moscow
+    networks:
+      - oddsapi
+
   tgbot:
     container_name: oddsapi_tgbot
     build: ./
@@ -49,15 +59,6 @@ services:
     networks:
       - oddsapi
 
-  queue-worker:
-    container_name: oddsapi_worker
-    build: ./
-    env_file: .env.prod
-    entrypoint: ./entrypoint-worker.sh
-    environment:
-      TZ: Europe/Moscow
-    networks:
-      - oddsapi
 
   parser-listener:
     container_name: oddsapi_listener

@@ -11,6 +11,7 @@ from pprint import pprint
 from string import Template
 
 import dateparser
+import tortoise
 from psycopg2.extensions import adapt
 
 from redis.asyncio import Redis
@@ -123,7 +124,12 @@ async def find_fixture_ilike(
     )
     logging.log(5, f"Running sql {sql}")
 
-    fixtures = await Fixture.raw(sql)
+    try:
+        fixtures = await Fixture.raw(sql)
+    except tortoise.exceptions.OperationalError:
+        logging.error(f"An error occurred while running this sql {sql}")
+        raise
+
     logging.log(5, f"Found fixtures {fixtures}")
 
     if len(fixtures) > 0:
@@ -151,7 +157,12 @@ async def find_fixture_soft(
     )
     logging.log(5, f"Running sql {sql}")
 
-    fixtures = await Fixture.raw(sql)
+    try:
+        fixtures = await Fixture.raw(sql)
+    except tortoise.exceptions.OperationalError:
+        logging.error(f"An error occurred while running this sql {sql}")
+        raise
+
     logging.log(5, f"Found fixtures {fixtures}")
 
     if len(fixtures) > 0:
@@ -190,7 +201,7 @@ def sanitize(string: str) -> str:
         traceback.print_exc()
 
         qs = adapt(string)
-        qs.encoding = 'utf-8'
+        qs.encoding = "utf-8"
         return str(qs)
 
         # It's odd that psycopg2 even uses latin-1

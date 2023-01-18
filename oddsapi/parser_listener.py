@@ -181,15 +181,13 @@ def prepate_text(text: str) -> str:
     words = text.split(" ")
 
     if len(words) < 2:
-        string = sanitize(words[0])
-        result = f"%{string}%"
+        result = sanitize(f"%{words[0]}%")
 
     words = [word for word in words if len(word) > 3]
 
     result = "|".join(words)
 
-    string = sanitize(result)
-    return f"%({string})%"
+    return sanitize(f"%({result})%")
 
 
 def sanitize(string: str) -> str:

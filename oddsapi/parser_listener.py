@@ -180,16 +180,11 @@ def prepate_text(text: str) -> str:
 
 def sanitize(string: str) -> str:
     try:
-        res = str(adapt(string))
-        return res
+        res = adapt(string)
+        return res.adapted
     except UnicodeEncodeError:
         print(f"Couldn't encode string {string}")
         traceback.print_exc()
-
-        # TODO: fix this. Why does psycopg2 even use latin-1?
-        string = string.encode('latin-1', 'ignore')
-        res = str(adapt(string))
-        return res
 
 
 async def async_main():

@@ -204,6 +204,18 @@ class BetcityEvent:
     away_team: float
 
 
+@dataclass(slots=False)
+class FonbetEvent:
+    event_url: str
+    name: str | None
+    datetime: str
+    home_team_name: str
+    away_team_name: str
+    home_team: float
+    draw: float
+    away_team: float
+
+
 async def add_betcity_bet(
     event: BetcityEvent, date: datetime, fixture: Fixture
 ) -> bool:
@@ -252,5 +264,53 @@ async def add_betcity_bet(
     logging.log(
         5, f"imported bet for betcity wihh fixture id {fixture.id} successfully"
     )
+
+    return update
+
+
+async def add_fonbet_bet(event: FonbetEvent, date: datetime, fixture: Fixture) -> bool:
+    await fixture.fetch_related("bets")
+
+    b = None
+    update = False
+    for fixture_bet in fixture.bets:
+        if fixture_bet.bookmaker == "fonbet":
+            logging.info(
+                f"This betcity bet is already in db for fixture with id {fixture.id}. Updating..."
+            )
+            update = True
+            b = fixture_bet
+
+    five_min_ago = datetime.now() - timedelta(minutes=5)
+    if (
+        b is not None
+        and (b.home_win != event.home_team)
+        and (b.updated_at.replace(tzinfo=None) > five_min_ago)
+    ):
+        logging.warning(
+            f"This fonbet bet was modified less than five minutes ago"
+            f" and now we are trying to update it with values different from previous one."
+            f"This could be a bug."
+        )
+
+    if not b:
+        update = False
+        b = Bet()
+        b.fixture = fixture
+        b.bookmaker = "fonbet"
+        b.source = "fonbet-parser"
+        b.source_update = date
+
+        logging.info(f"Adding bet from fonbet for fixture with id {fixture.id}...")
+
+    b.home_win = event.home_team
+    b.draw = event.draw
+    b.away_win = event.away_team
+
+    # b.total_over25 = float(total["odd"])
+    # b.total_under25 = float(total["odd"])
+
+    await b.save()
+    logging.log(5, f"imported bet for fonbet with fixture id {fixture.id} successfully")
 
     return update

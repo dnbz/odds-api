@@ -15,7 +15,8 @@ tg-bot = { call = 'oddsapi.tg:main' }
 tg-notify = { call = 'oddsapi.tg:run_tg_notify' }
 tg-clean-notify = { call = 'oddsapi.tg:run_tg_clean_notify' }
 
-parser-listener = { call = 'oddsapi.parser_listener:main'}
+betcity-listener = { call = 'oddsapi.betcity_listener:betcity_main'}
+fonbet-listener = { call = 'oddsapi.fonbet_listener:fonbet_main'}
 
 [project]
 name = ""

@@ -60,11 +60,21 @@ services:
       - oddsapi
 
 
-  parser-listener:
-    container_name: oddsapi_listener
+  betcity-listener:
+    container_name: oddsapi_betcity_listener
     build: ./
     env_file: .env.prod
-    entrypoint: ./entrypoint-parser-listener.sh
+    entrypoint: ./entrypoint-betcity-listener.sh
+    environment:
+      TZ: Europe/Moscow
+    networks:
+      - oddsapi
+
+  fonbet-listener:
+    container_name: oddsapi_fonbet_listener
+    build: ./
+    env_file: .env.prod
+    entrypoint: ./entrypoint-fonbet-listener.sh
     environment:
       TZ: Europe/Moscow
     networks:

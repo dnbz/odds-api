@@ -18,7 +18,7 @@ from redis.asyncio import Redis
 from tortoise import connections
 
 from oddsapi.db import redis_connect, RedisDB, init_db
-from oddsapi.db_import import add_betcity_bet, BetcityEvent
+from oddsapi.db_import import add_betcity_bet, BetcityEvent, FonbetEvent, add_fonbet_bet
 from oddsapi.helpers import configure_logging
 from oddsapi.models import Fixture
 
@@ -41,8 +41,8 @@ async def reader(client: Redis):
     }
 
     count = 0
-    while True:
-        # while count < 800:
+    # while True:
+    while count < 50:
         event = await get_event(client)
         status = await process_event(event)
 
@@ -60,7 +60,7 @@ async def reader(client: Redis):
     logging.info(f"Processing stats: {stats}")
 
 
-async def process_event(event: BetcityEvent) -> ProcessStatus:
+async def process_event(event: FonbetEvent) -> ProcessStatus:
     logging.info(f"Processing event {event}")
 
     event_date = dateparser.parse(event.datetime)
@@ -84,7 +84,7 @@ async def process_event(event: BetcityEvent) -> ProcessStatus:
             )
             return ProcessStatus.NotFoundError
 
-    updated = await add_betcity_bet(event, event_date, fixture)
+    updated = await add_fonbet_bet(event, event_date, fixture)
 
     if updated:
         return ProcessStatus.Updated
@@ -92,15 +92,15 @@ async def process_event(event: BetcityEvent) -> ProcessStatus:
         return ProcessStatus.Added
 
 
-async def get_event(client: Redis) -> BetcityEvent:
-    queue = "betcity"
+async def get_event(client: Redis) -> FonbetEvent:
+    queue = "fonbet"
     data = await client.brpop([queue])
     # data = await client.blmove(
-    #     "betcity", "betcity", timeout=0, src="RIGHT", dest="LEFT"
+    #     "fonbet", "fonbet", timeout=0, src="RIGHT", dest="LEFT"
     # )
 
-    # event = BetcityEvent(**json.loads(data))
-    event = BetcityEvent(**json.loads(data[1]))
+    # event = FonbetEvent(**json.loads(data))
+    event = FonbetEvent(**json.loads(data[1]))
     return event
 
 
@@ -205,23 +205,20 @@ def sanitize(string: str) -> str:
         # It's odd that psycopg2 even uses latin-1
 
 
-async def async_main():
-    await init_db()
+def fonbet_main():
+    async def run():
+        await init_db()
 
-    conn = connections.get("default")
-    await conn.execute_query("CREATE EXTENSION IF NOT EXISTS unaccent")
+        logging.basicConfig(
+            format="%(asctime)s %(levelname)s:%(message)s", level=logging.INFO
+        )
 
-    # await find_fixture_soft("Istra", "Slaven Belupo Koprivnica")
-    client = await redis_connect(RedisDB.BETCITY)
+        conn = connections.get("default")
+        await conn.execute_query("CREATE EXTENSION IF NOT EXISTS unaccent")
 
-    await reader(client)
-    await client.close()
+        client = await redis_connect(RedisDB.BETCITY)
 
+        await reader(client)
+        await client.close()
 
-def main():
-    loop = asyncio.new_event_loop()
-    run = loop.run_until_complete(async_main())
-
-
-if __name__ == "__main__":
-    main()
+    asyncio.run(run())

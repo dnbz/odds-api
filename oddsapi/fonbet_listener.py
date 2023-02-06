@@ -41,8 +41,8 @@ async def reader(client: Redis):
     }
 
     count = 0
-    # while True:
-    while count < 50:
+    while True:
+        # while count < 50:
         event = await get_event(client)
         status = await process_event(event)
 

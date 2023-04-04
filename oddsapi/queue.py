@@ -1,24 +1,22 @@
-import asyncio
 import datetime
 
-from arq import create_pool, cron
+from arq import cron
 from arq.connections import RedisSettings
 
-from oddsapi.db import RedisDB, init_db
-from .api_client import get_httpx_config
-from .helpers import time_now, configure_logging
-from .tg import notify as tg_notify
+from oddsapi.database.redis_connection import RedisDB
+from oddsapi.apifootball.apiclient import get_httpx_config
+from oddsapi.helpers import time_now, configure_logging
+from oddsapi.tgbot.tgbot import tg_notify
 from httpx import AsyncClient
 
-from .loaders import (
-    load_static,
-    load_matches,
-)
-from .settings import REDIS_PASSWORD, REDIS_HOST
+from oddsapi.apifootball.loader import load_matches, load_static
+from oddsapi.settings import REDIS_PASSWORD, REDIS_HOST
 
 
 def get_redis_settings() -> RedisSettings:
-    return RedisSettings(password=REDIS_PASSWORD, database=RedisDB.WORKER_QUEUE, host=REDIS_HOST)
+    return RedisSettings(
+        password=REDIS_PASSWORD, database=RedisDB.WORKER_QUEUE, host=REDIS_HOST
+    )
 
 
 async def download_content(ctx, url):
@@ -29,7 +27,6 @@ async def download_content(ctx, url):
 
 
 async def startup(ctx):
-    await init_db()
     configure_logging()
     ctx["session"] = AsyncClient(**get_httpx_config())
 
@@ -55,7 +52,11 @@ def get_min_sec():
     interval = datetime.timedelta(seconds=20)
     target_time = time + interval
 
-    return target_time.minute, target_time.second
+    return {
+        "hour": target_time.hour,
+        "minute": target_time.minute,
+        "second": target_time.second,
+    }
 
 
 # WorkerSettings defines the settings to use when creating the work,
@@ -68,9 +69,10 @@ class WorkerSettings:
     redis_settings = get_redis_settings()
 
     # debug run time
-    # min, sec = get_min_sec()
+    debug_time = get_min_sec()
     cron_jobs = [
-        cron(update_static, hour={22}, minute=15),
+        # cron(update_static, hour={22}, minute=15),
+        cron(update_static, **debug_time),
         # odd hours
         cron(update_matches, hour={hour for hour in range(1, 24, 2)}, minute=35),
         # every 10 min.

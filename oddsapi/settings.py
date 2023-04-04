@@ -10,7 +10,14 @@ BOOKMAKERS = ["Marathonbet", "Pinnacle"]
 BET_PARSE_DAYS = 12
 # сколько дней матчей загружать
 FIXTURE_PARSE_DAYS = 31
+
+# настройки фильтров для ставок
+# отклонение от среднего
 DEVIATION_THRESHOLD = 20
+# максимальный коэффициент. Если коэффициент больше, то ставка не учитывается
+MAX_ODDS = 3.5
+# референсный букмекер. Отображаются только события, которые есть у этого букмекера
+REFERENCE_BOOKMAKER = "fonbet"
 
 APP_ENV = os.environ.get("APP_ENV", default="prod")
 
@@ -24,25 +31,20 @@ TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 TG_BOT_NAME = os.environ.get("TG_BOT_NAME")
 TG_CHANNEL = os.environ.get("TG_CHANNEL")
 
+DISABLE_PROXY = os.environ.get("DISABLE_PROXY", default=False)
+
+if os.environ.get("DB_ECHO"):
+    DB_ECHO = True
+else:
+    DB_ECHO = False
+
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD")
 REDIS_HOST = os.environ.get("REDIS_HOST")
 REDIS_PORT = os.environ.get("REDIS_PORT")
 
 HTTPX_PROXY = os.environ.get("HTTPX_PROXY")
 
-DB_CONNECTION = os.environ.get(
-    "DB_CONNECTION", default="postgresql://postgres:mypassword@localhost:5432/oddsapi"
+DATABASE_CONNECTION = os.environ.get(
+    "DATABASE_CONNECTION",
+    default="postgresql://postgres:mypassword@localhost:5432/oddsapi",
 )
-
-TORTOISE_ORM_CONFIG = {
-    "connections": {
-        # "default": "postgres://postgres:Aif3eireuri6Ohriitohji2Oh@localhost:5478/oddsapi"
-        "default": DB_CONNECTION
-    },
-    "apps": {
-        "models": {
-            "models": ["oddsapi.models", "aerich.models"],
-            "default_connection": "default",
-        },
-    },
-}

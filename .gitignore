@@ -6,3 +6,9 @@
 *.session
 *.session-journal
 /.env.prod
+/.mypy_cache/
+
+
+__pycache__
+/docker/dumps/
+/flagged/

@@ -24,6 +24,7 @@ services:
     image: postgres:15-alpine
     environment:
       TZ: Europe/Moscow
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: oddsapi
     volumes:
@@ -41,7 +42,7 @@ services:
 
   queue-worker:
     container_name: oddsapi_worker
-    build: ./
+    build: ./docker
     env_file: .env.prod
     entrypoint: ./entrypoint-worker.sh
     environment:
@@ -51,7 +52,7 @@ services:
 
   tgbot:
     container_name: oddsapi_tgbot
-    build: ./
+    build: ./docker
     env_file: .env.prod
     entrypoint: ./entrypoint-tgbot.sh
     environment:
@@ -62,7 +63,7 @@ services:
 
   betcity-listener:
     container_name: oddsapi_betcity_listener
-    build: ./
+    build: ./docker
     env_file: .env.prod
     entrypoint: ./entrypoint-betcity-listener.sh
     environment:
@@ -72,7 +73,7 @@ services:
 
   fonbet-listener:
     container_name: oddsapi_fonbet_listener
-    build: ./
+    build: ./docker
     env_file: .env.prod
     entrypoint: ./entrypoint-fonbet-listener.sh
     environment:

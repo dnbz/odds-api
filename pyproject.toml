@@ -1,5 +1,10 @@
 [tool.pdm]
 [tool.pdm.dev-dependencies]
+dev = [
+    "pyflakes>=3.0.1",
+    "mypy>=1.0.1",
+    "ipython>=8.10.0",
+]
 
 [tool.aerich]
 tortoise_orm = "oddsapi.settings.TORTOISE_ORM_CONFIG"
@@ -7,16 +12,26 @@ location = "./migrations"
 src_folder = "./."
 
 [tool.pdm.scripts]
-import = { call = 'oddsapi.main:main' }
-import-static = { call = 'oddsapi.main:run_import_static' }
-worker = "arq oddsapi.queue.WorkerSettings"
+_.env_file = ".env"
+import-matches = { call = 'oddsapi.commands:import_matches' }
+import-static = { call = 'oddsapi.commands:import_static' }
 
-tg-bot = { call = 'oddsapi.tg:main' }
-tg-notify = { call = 'oddsapi.tg:run_tg_notify' }
-tg-clean-notify = { call = 'oddsapi.tg:run_tg_clean_notify' }
+delete-matches = { call = 'oddsapi.commands:delete_matches' }
+delete-static = { call = 'oddsapi.commands:delete_static' }
+delete-all = { call = 'oddsapi.commands:delete_all' }
+delete-tgnotify = { call = 'oddsapi.commands:delete_notify' }
 
-betcity-listener = { call = 'oddsapi.betcity_listener:betcity_main'}
-fonbet-listener = { call = 'oddsapi.fonbet_listener:fonbet_main'}
+worker = "arq oddsapi.launchers.queue.WorkerSettings"
+
+tg-bot = { call = 'oddsapi.commands:run_tgbot' }
+tg-notify = { call = 'oddsapi.commands:telegram_notify' }
+
+betcity-listener = { call = 'oddsapi.commands:betcity_listener'}
+fonbet-listener = { call = 'oddsapi.commands:fonbet_listener'}
+pinnacle-listener = { call = 'oddsapi.commands:pinnacle_listener'}
+marathon-listener = { call = 'oddsapi.commands:marathon_listener'}
+
+webui = { call = 'oddsapi.ui.gradioui:main' }
 
 [project]
 name = ""
@@ -26,20 +41,21 @@ dependencies = [
     "python-dotenv>=0.21.0",
     "uvloop>=0.17.0",
     "redis>=4.4.1",
-    "tortoise-orm[asyncpg]>=0.19.2",
-    "aerich>=0.7.1",
     "click>=8.1.3",
     "httpx>=0.23.1",
     "pyrogram>=2.0.93",
     "arq>=0.25.0",
     "tgcrypto>=1.2.5",
-    "psycopg[binary]>=3.1.7",
+    "psycopg[binary,pool]>=3.1.8",
     # plotly and deps
     "plotly>=5.11.0",
     "numpy>=1.24.1",
     "kaleido==0.2.1",
     "dateparser>=1.1.6",
     "Pillow>=9.4.0",
-    "psycopg2-binary>=2.9.5",
+    "SQLAlchemy>=2.0.3",
+    "asyncpg>=0.27.0",
+    "alembic>=1.9.3",
+    "gradio>=3.24.1",
 ]
 requires-python = ">=3.11"

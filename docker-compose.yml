@@ -33,51 +33,26 @@ services:
     ports:
       - ${POSTGRES_PORT}:5432
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - oddsapi
 
-  queue-worker:
-    container_name: oddsapi_worker
-    build: ./docker
+  odds:
+    container_name: odds
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
     env_file: .env.prod
-    entrypoint: ./entrypoint-worker.sh
+    volumes:
+      - ./logs:/app/logs
     environment:
       TZ: Europe/Moscow
-    networks:
-      - oddsapi
-
-  tgbot:
-    container_name: oddsapi_tgbot
-    build: ./docker
-    env_file: .env.prod
-    entrypoint: ./entrypoint-tgbot.sh
-    environment:
-      TZ: Europe/Moscow
-    networks:
-      - oddsapi
-
-
-  betcity-listener:
-    container_name: oddsapi_betcity_listener
-    build: ./docker
-    env_file: .env.prod
-    entrypoint: ./entrypoint-betcity-listener.sh
-    environment:
-      TZ: Europe/Moscow
-    networks:
-      - oddsapi
-
-  fonbet-listener:
-    container_name: oddsapi_fonbet_listener
-    build: ./docker
-    env_file: .env.prod
-    entrypoint: ./entrypoint-fonbet-listener.sh
-    environment:
-      TZ: Europe/Moscow
+      DISABLE_PROXY: "True"
+    ports:
+        - ${WEBUI_PORT}:8080
     networks:
       - oddsapi
 

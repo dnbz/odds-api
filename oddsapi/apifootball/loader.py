@@ -25,11 +25,12 @@ from oddsapi.database.repository.country import (
     delete_all_countries,
     upsert_country,
 )
-from oddsapi.database.repository.fixture import delete_all_fixtures, upsert_fixture
-from oddsapi.database.repository.league import delete_all_leagues, upsert_league
+from oddsapi.database.repository.fixture import delete_all_fixtures, upsert_fixture, \
+    get_fixture_count
+from oddsapi.database.repository.league import delete_all_leagues, upsert_league, get_league_count
 from oddsapi.database.repository.team import upsert_team, delete_all_teams
 from oddsapi.settings import (
-    BOOKMAKERS,
+    APIFOOTBALL_BOOKMAKERS,
     FIXTURE_PARSE_DAYS,
     BET_PARSE_DAYS,
     DISABLE_PROXY,
@@ -59,7 +60,7 @@ class ApiFootballLoader:
                     bookmakers = [
                         bookmaker
                         for bookmaker in bet["bookmakers"]
-                        if bookmaker["name"] in BOOKMAKERS
+                        if bookmaker["name"] in APIFOOTBALL_BOOKMAKERS
                     ]
                     for bookmaker in bookmakers:
                         await upsert_apifootball_bet(bet, bookmaker, self.session)
@@ -167,3 +168,15 @@ async def load_static(delete=False):
         await loader.load_countries(delete)
         await loader.load_bookmakers(delete)
         await loader.load_teams(delete)
+
+
+# load matches and bets if they are not already in the database
+async def autoimport():
+    async with SessionLocal() as session:
+        league_count = await get_league_count(session)
+        fixture_count = await get_fixture_count(session)
+
+    if league_count == 0 or fixture_count == 0:
+        logging.info("No leagues or fixtures found. Importing initial data...")
+        await load_static()
+        await load_matches()

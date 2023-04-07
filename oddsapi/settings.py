@@ -5,7 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BOOKMAKERS = ["Marathonbet", "Pinnacle"]
+# bookmakers that are parsed from apifootball. legacy setting
+APIFOOTBALL_BOOKMAKERS = ["Marathonbet", "Pinnacle"]
+
+# access dsn for sentry error reporting
+SENTRY_DSN = os.environ.get("SENTRY_DSN")
+
+UI_PASSWORD = os.environ.get("UI_PASSWORD")
+
 # сколько дней ставок загружать
 BET_PARSE_DAYS = 12
 # сколько дней матчей загружать

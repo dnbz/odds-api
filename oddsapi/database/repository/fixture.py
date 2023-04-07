@@ -131,3 +131,8 @@ async def find_fixture_partial(
 async def delete_all_fixtures(session: AsyncSession):
     stmt = delete(Fixture)
     await session.execute(stmt)
+
+
+async def get_fixture_count(session: AsyncSession) -> int:
+    stmt = select(func.count(Fixture.id))
+    return (await session.scalars(stmt)).first()

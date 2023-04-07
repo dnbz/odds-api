@@ -1,9 +1,6 @@
 import asyncio
 
-import altair
-
 import gradio as gr
-from math import sqrt
 import matplotlib
 from gradio import State
 from pandas import DataFrame
@@ -11,13 +8,16 @@ from pandas import DataFrame
 from oddsapi.database.init import SessionLocal
 from oddsapi.database.repository.bet import get_bet_bookmakers
 from oddsapi.filter.fixture import find_filtered_fixtures
-from oddsapi.settings import MAX_ODDS, DEVIATION_THRESHOLD, REFERENCE_BOOKMAKER
+from oddsapi.settings import (
+    MAX_ODDS,
+    DEVIATION_THRESHOLD,
+    REFERENCE_BOOKMAKER,
+    UI_PASSWORD,
+    APP_ENV,
+)
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
-import numpy as np
-import plotly.express as px
 import pandas as pd
 
 MINIMUM_ODDS_THRESHOLD = 1.01
@@ -62,8 +62,6 @@ def get_fixtures(
 
     fixtures = asyncio.run(async_get_data())
     return fixtures
-
-    return df
 
 
 def fetch_events(
@@ -139,8 +137,15 @@ def update_odds_slider(val: float, s: State):
     return s
 
 
+def check_auth(username, password):
+    if APP_ENV == "dev":
+        return True
+
+    return username == "bet" and password == UI_PASSWORD
+
+
 def main():
-    block = gr.Blocks(css='footer{display:none !important}')
+    block = gr.Blocks(css="footer{display:none !important}")
     with block:
         # database Events that are used to create dataframe views
         fixtures = gr.State(value=[])
@@ -213,4 +218,4 @@ def main():
         # running the function on page load in addition to when the button is clicked
         block.load(fetch_events, inputs=[state], outputs=[fixtures, data])
 
-    block.launch()
+    block.launch(auth=check_auth)

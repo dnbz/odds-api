@@ -4,9 +4,8 @@ from arq import cron
 from arq.connections import RedisSettings
 
 from oddsapi.database.redis_connection import RedisDB
-from oddsapi.apifootball.apiclient import get_httpx_config
 from oddsapi.helpers import time_now, configure_logging
-from oddsapi.tgbot.tgbot import tg_notify
+from oddsapi.tgbot.tgbot import run_tg_notify
 from httpx import AsyncClient
 
 from oddsapi.apifootball.loader import load_matches, load_static
@@ -28,15 +27,14 @@ async def download_content(ctx, url):
 
 async def startup(ctx):
     configure_logging()
-    ctx["session"] = AsyncClient(**get_httpx_config())
 
 
 async def shutdown(ctx):
-    await ctx["session"].aclose()
+    pass
 
 
 async def notify(ctx):
-    await tg_notify()
+    await run_tg_notify()
 
 
 async def update_static(ctx):
@@ -69,10 +67,10 @@ class WorkerSettings:
     redis_settings = get_redis_settings()
 
     # debug run time
-    debug_time = get_min_sec()
+    # debug_time = get_min_sec()
     cron_jobs = [
-        # cron(update_static, hour={22}, minute=15),
-        cron(update_static, **debug_time),
+        cron(update_static, hour={22}, minute=15),
+        # cron(update_static, **debug_time),
         # odd hours
         cron(update_matches, hour={hour for hour in range(1, 24, 2)}, minute=35),
         # every 10 min.

@@ -3,6 +3,8 @@
 .ruff_cache
 .env
 
+logs/*.log
+
 *.session
 *.session-journal
 /.env.prod

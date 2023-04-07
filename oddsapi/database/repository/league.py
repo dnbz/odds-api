@@ -1,7 +1,6 @@
 import asyncio
-import logging
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oddsapi.database.repository.season import upsert_season
@@ -52,3 +51,8 @@ async def upsert_league(data: dict, session: AsyncSession):
 async def delete_all_leagues(session: AsyncSession):
     stmt = delete(League)
     await session.execute(stmt)
+
+
+async def get_league_count(session: AsyncSession) -> int:
+    stmt = select(func.count(League.id))
+    return (await session.scalars(stmt)).first()

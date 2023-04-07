@@ -118,7 +118,7 @@ async def upsert_marathon_bet(
     for fixture_bet in fixture.bets:
         if fixture_bet.bookmaker == "marathon":
             logging.info(
-                f"This betcity bet is already in db for fixture with id {fixture.id}. Updating..."
+                f"This marathon bet is already in db for fixture with id {fixture.id}. Updating..."
             )
             update = True
             bet = fixture_bet
@@ -160,7 +160,7 @@ async def upsert_marathon_bet(
     return update
 
 
-async def get_bet_bookmakers(session: AsyncSession) -> bool:
+async def get_bet_bookmakers(session: AsyncSession) -> list | None:
     # find all bookmakers using group by from Bet table. Order by count
     stmt = (
         select(Bet.bookmaker, func.count())
@@ -229,7 +229,7 @@ async def upsert_fonbet_bet(
     for fixture_bet in fixture.bets:
         if fixture_bet.bookmaker == "fonbet":
             logging.info(
-                f"This betcity bet is already in db for fixture with id {fixture.id}. Updating..."
+                f"This fonbet bet is already in db for fixture with id {fixture.id}. Updating..."
             )
             update = True
             bet = fixture_bet

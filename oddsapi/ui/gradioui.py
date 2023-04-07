@@ -158,6 +158,7 @@ def main():
                 bk_dropdown = gr.Dropdown(
                     get_bookmakers(),
                     value=REFERENCE_BOOKMAKER,
+                    interactive=True,
                     label="Reference bookmaker",
                 )
 

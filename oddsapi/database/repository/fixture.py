@@ -81,6 +81,15 @@ def _gen_soft_search_pattern(string: str) -> str:
     """Convert text to sql query for search.
     Adds | between words and discards words < 3 chars long"""
 
+    # remove words that are not useful for matching
+    ban_search_words = ["FC", "United", "City", "El"]
+    for word in ban_search_words:
+        string = string.replace(f"word ", "")
+        string = string.replace(f" word", "")
+
+    # remove any single letter words
+    string = re.sub(r"\b\w\b", "", string)
+
     # remove whitespace
     string = re.sub(r"\s+", " ", string.strip())
     # dashes are sometimes used in place of spaces

@@ -8,14 +8,19 @@ from typing import Type, TypeVar
 import dateparser
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oddsapi.database.data_models import BetcityEvent, FonbetEvent
+from oddsapi.database.data_models import (
+    BetcityEvent,
+    FonbetEvent,
+    MarathonEvent,
+    PinnacleEvent,
+)
 from oddsapi.database.init import SessionLocal
 from oddsapi.database.redis_connection import redis_connect, RedisDB
 from oddsapi.database.repository.bet import upsert_betcity_bet
 from oddsapi.database.repository.fixture import find_fixture_ilike, find_fixture_partial
 from oddsapi.helpers import configure_logging
 
-T = TypeVar("T", bound=BetcityEvent | FonbetEvent)
+T = TypeVar("T", bound=BetcityEvent | FonbetEvent | MarathonEvent | PinnacleEvent)
 
 
 class ProcessStatus(IntEnum):
@@ -74,6 +79,13 @@ class ParserListener(ABC):
 
         return event
 
+    async def check_event(self, event: T):
+        """Verify that event doesn't have any None values. in fields home_win, draw, away_win"""
+        if not event.home_team or not event.draw or not event.away_team:
+            return False
+
+        return True
+
     async def process_events(self):
         debug_break_count = 0
         while True:
@@ -84,6 +96,11 @@ class ParserListener(ABC):
                     break
 
             event = await self.get_event()
+            if not await self.check_event(event):
+                logging.error(
+                    f"Event {event} has None values in home_win, draw, away_win fields"
+                )
+                continue
 
             logging.info(f"Processing event {event}")
 

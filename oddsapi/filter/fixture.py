@@ -74,8 +74,8 @@ def _get_select_filtered_fixtures(
 
 async def find_filtered_fixtures(
     session: AsyncSession,
-    deviation_threshold: int = DEVIATION_THRESHOLD,
-    max_odds: int = MAX_ODDS,
+    deviation_threshold: float = DEVIATION_THRESHOLD,
+    max_odds: float = MAX_ODDS,
     reference_bookmaker: str | None = REFERENCE_BOOKMAKER,
 ) -> list[Fixture] | None:
     stmt = _get_select_filtered_fixtures(

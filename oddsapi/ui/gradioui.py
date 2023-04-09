@@ -47,7 +47,7 @@ def get_bookmakers():
 
 def get_fixtures(
     bookmaker: str,
-    deviation: int,
+    deviation: float,
     odds_threshold: float,
 ):
     async def async_get_data():
@@ -153,55 +153,53 @@ def main():
         state = gr.State(value=get_default_state())
 
         gr.Markdown("""Bets""")
-        with gr.Row():
-            with gr.Column():
-                bk_dropdown = gr.Dropdown(
-                    get_bookmakers(),
-                    value=REFERENCE_BOOKMAKER,
-                    interactive=True,
-                    label="Reference bookmaker",
-                )
+        bk_dropdown = gr.Dropdown(
+            get_bookmakers(),
+            value=REFERENCE_BOOKMAKER,
+            interactive=True,
+            label="Reference bookmaker",
+        )
 
-                bk_dropdown.select(
-                    update_bookmaker,
-                    inputs=[bk_dropdown, state],
-                    outputs=[state],
-                )
+        bk_dropdown.select(
+            update_bookmaker,
+            inputs=[bk_dropdown, state],
+            outputs=[state],
+        )
 
-                deviation_slider = gr.Slider(
-                    minimum=MINIMUM_DEVIATION,
-                    maximum=MAXIMUM_DEVIATION,
-                    value=DEFAULT_DEVIATION,
-                    step=1,
-                    interactive=True,
-                    label="Deviation threshold",
-                )
+        deviation_slider = gr.Slider(
+            minimum=MINIMUM_DEVIATION,
+            maximum=MAXIMUM_DEVIATION,
+            value=DEFAULT_DEVIATION,
+            step=1,
+            interactive=True,
+            label="Deviation threshold",
+        )
 
-                deviation_slider.change(
-                    update_deviation,
-                    inputs=[deviation_slider, state],
-                    outputs=[state],
-                )
+        deviation_slider.change(
+            update_deviation,
+            inputs=[deviation_slider, state],
+            outputs=[state],
+        )
 
-                odds_slider = gr.Slider(
-                    minimum=MINIMUM_ODDS_THRESHOLD,
-                    maximum=MAXIMUM_ODDS_THRESHOLD,
-                    value=DEFAULT_ODDS_THRESHOLD,
-                    step=0.10,
-                    interactive=True,
-                    label="Limit odds",
-                )
+        odds_slider = gr.Slider(
+            minimum=MINIMUM_ODDS_THRESHOLD,
+            maximum=MAXIMUM_ODDS_THRESHOLD,
+            value=DEFAULT_ODDS_THRESHOLD,
+            step=0.10,
+            interactive=True,
+            label="Limit odds",
+        )
 
-                odds_slider.change(
-                    update_odds_slider,
-                    inputs=[odds_slider, state],
-                    outputs=[state],
-                )
+        odds_slider.change(
+            update_odds_slider,
+            inputs=[odds_slider, state],
+            outputs=[state],
+        )
 
-            with gr.Tabs():
-                with gr.TabItem("Detail"):
-                    with gr.Row():
-                        detail_data = gr.components.Dataframe(type="pandas")
+        with gr.Tabs():
+            with gr.TabItem("Detail"):
+                with gr.Row():
+                    detail_data = gr.components.Dataframe(type="pandas")
 
         with gr.Tabs():
             with gr.TabItem("Events"):

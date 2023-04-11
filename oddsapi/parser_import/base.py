@@ -98,7 +98,7 @@ class ParserListener(ABC):
             event = await self.get_event()
             if not await self.check_event(event):
                 logging.error(
-                    f"Event {event} has None values in home_win, draw, away_win fields"
+                    f"Event has None values in home_win, draw, away_win fields: {event}"
                 )
                 continue
 

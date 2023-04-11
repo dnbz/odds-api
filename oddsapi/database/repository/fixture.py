@@ -82,7 +82,23 @@ def _gen_soft_search_pattern(string: str) -> str:
     Adds | between words and discards words < 3 chars long"""
 
     # remove words that are not useful for matching
-    ban_search_words = ["FC", "United", "City", "El"]
+    ban_search_words = [
+        "FC",
+        "United",
+        "City",
+        "El",
+        "De",
+        "Los",
+        "The",
+        "Club",
+        "Town",
+        "Al",
+        "Real",
+        "CF",
+        "CFR",
+        "FC",
+        "FK",
+    ]
     for word in ban_search_words:
         string = string.replace(f"word ", "")
         string = string.replace(f" word", "")

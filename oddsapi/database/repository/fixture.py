@@ -90,13 +90,13 @@ def _gen_soft_search_pattern(string: str) -> str:
         "De",
         "Los",
         "The",
+        "SC",
         "Club",
         "Town",
         "Al",
         "Real",
         "CF",
         "CFR",
-        "FC",
         "FK",
     ]
     for word in ban_search_words:

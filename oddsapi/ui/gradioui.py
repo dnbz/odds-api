@@ -77,9 +77,7 @@ def fetch_events(
             "Home team": fixture.home_team_name,
             "Away team": fixture.away_team_name,
             "Date": fixture.date,
-            # "Home odds": fixture.home_odds,
-            # "Draw odds": fixture.draw_odds,
-            # "Away odds": fixture.away_odds,
+            "League": fixture.league.name,
         }
         for fixture in fixtures
     ]
@@ -88,7 +86,7 @@ def fetch_events(
 
 
 # display the odds for a given fixture on select
-def event_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list):
+def event_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list, state: dict):
     row_id = evt.index[0]
     fixture_id = data.iloc[row_id]["Id"]
 
@@ -107,7 +105,37 @@ def event_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list):
         }
         for bet in fixture.bets
     ]
-    df = pd.DataFrame(odds_data)
+    # filter the dictionaries where "Bookmaker" is equal to "mybk"
+    reference_bk_odds = [d for d in odds_data if d["Bookmaker"] == state["bookmaker"]]
+
+    # filter the dictionaries where "Bookmaker" is not equal to "mybk"
+    other_bk_odds = [d for d in odds_data if d["Bookmaker"] != state["bookmaker"]]
+
+    # create a dataframe from the filtered dictionaries
+    df = pd.DataFrame(reference_bk_odds + other_bk_odds)
+
+    return df
+
+
+# display the odds for a given fixture on select
+def info_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list, state: dict):
+    row_id = evt.index[0]
+    fixture_id = data.iloc[row_id]["Id"]
+
+    fixture = next((f for f in fixtures if f.id == fixture_id), None)
+
+    if fixture is None:
+        return None
+
+    # create a dataframe with the odds for the selected fixture
+    data = {
+        "Source update": fixture.source_update,
+        "Date": fixture.date,
+        "Away_team_logo": fixture.away_team_logo,
+    }
+
+    df = pd.DataFrame([data])
+
     return df
 
 
@@ -201,12 +229,23 @@ def main():
                 with gr.Row():
                     detail_data = gr.components.Dataframe(type="pandas")
 
+            with gr.TabItem("Info"):
+                with gr.Row():
+                    info_data = gr.components.Dataframe(type="pandas")
+
         with gr.Tabs():
             with gr.TabItem("Events"):
                 with gr.Row():
                     data = gr.components.Dataframe(type="pandas", interactive=False)
                     data.select(
-                        event_on_select, inputs=[data, fixtures], outputs=detail_data
+                        event_on_select,
+                        inputs=[data, fixtures, state],
+                        outputs=detail_data,
+                    )
+                    data.select(
+                        info_on_select,
+                        inputs=[data, fixtures, state],
+                        outputs=info_data,
                     )
                 with gr.Row():
                     data_run = gr.Button("Refresh")

@@ -11,7 +11,7 @@ from sqlalchemy import (
     Boolean,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, query_expression
 
 from oddsapi.database.init import Base
 
@@ -42,8 +42,12 @@ class Bet(Base):
     home_win: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
     away_win: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
     draw: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
-    total_under25: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
-    total_over25: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
+    total_under25: Mapped[float] = mapped_column(
+        Numeric(12, 6), index=True, nullable=True
+    )
+    total_over25: Mapped[float] = mapped_column(
+        Numeric(12, 6), index=True, nullable=True
+    )
 
     fixture_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("fixture.id"), index=True
@@ -119,7 +123,9 @@ class Fixture(Base):
         onupdate=func.now(),
     )
 
-    source_update: Mapped[datetime] = mapped_column(DateTime(True), index=True, nullable=True)
+    source_update: Mapped[datetime] = mapped_column(
+        DateTime(True), index=True, nullable=True
+    )
 
     timezone: Mapped[str] = mapped_column(String(255))
     date: Mapped[datetime] = mapped_column(DateTime(True), index=True)
@@ -153,6 +159,18 @@ class Fixture(Base):
     home_team: Mapped["Team"] = relationship(
         "Team", back_populates="home_fixtures", foreign_keys=[home_team_id]
     )
+
+    # conditions which indicate which odds have been matched to a fixture
+    condition_away_win: Mapped[bool] = query_expression()
+    condition_home_win: Mapped[bool] = query_expression()
+    condition_draw: Mapped[bool] = query_expression()
+
+    def get_conditions(self) -> dict:
+        return {
+            "away_win": self.condition_away_win,
+            "home_win": self.condition_home_win,
+            "draw": self.condition_draw,
+        }
 
 
 class League(Base):

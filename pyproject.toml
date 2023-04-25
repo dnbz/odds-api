@@ -6,11 +6,6 @@ dev = [
     "ipython>=8.10.0",
 ]
 
-[tool.aerich]
-tortoise_orm = "oddsapi.settings.TORTOISE_ORM_CONFIG"
-location = "./migrations"
-src_folder = "./."
-
 [tool.pdm.scripts]
 _.env_file = ".env"
 import-matches = { call = 'oddsapi.commands:import_matches' }
@@ -25,12 +20,13 @@ delete-tgnotify = { call = 'oddsapi.commands:delete_notify' }
 tg-bot = { call = 'oddsapi.commands:run_tgbot' }
 tg-notify = { call = 'oddsapi.commands:telegram_notify' }
 
-betcity-listener = { call = 'oddsapi.commands:betcity_listener'}
-fonbet-listener = { call = 'oddsapi.commands:fonbet_listener'}
-pinnacle-listener = { call = 'oddsapi.commands:pinnacle_listener'}
-marathon-listener = { call = 'oddsapi.commands:marathon_listener'}
+betcity-listener = { call = 'oddsapi.commands:betcity_listener' }
+fonbet-listener = { call = 'oddsapi.commands:fonbet_listener' }
+pinnacle-listener = { call = 'oddsapi.commands:pinnacle_listener' }
+marathon-listener = { call = 'oddsapi.commands:marathon_listener' }
 
-webui = { call = 'oddsapi.ui.gradioui:main' }
+webui = 'python oddsapi/ui/gradioui.py'
+webui-dev = 'gradio oddsapi/ui/gradioui.py'
 
 migrate = "alembic upgrade head"
 

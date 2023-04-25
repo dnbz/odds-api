@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import gradio as gr
 import matplotlib
@@ -30,12 +31,20 @@ DEFAULT_DEVIATION = DEVIATION_THRESHOLD
 
 
 def get_bookmakers():
+    # return []
     async def async_get_bookmakers():
+        SessionLocal().run
         async with SessionLocal() as session:
             data = await get_bet_bookmakers(session)
             return data
 
-    bookmaker_data = asyncio.run(async_get_bookmakers())
+    if asyncio.get_event_loop().is_running():
+        logging.info(
+            "Event loop is already running, skipping async call and using default values for bookmakers."
+        )
+        return ["fonbet - 0", "marathon - 0", "pinnacle - 0", "betcity - 0j"]
+    else:
+        bookmaker_data = asyncio.run(async_get_bookmakers())
 
     # concatenate bookmaker names and count
     result = []
@@ -71,16 +80,29 @@ def fetch_events(
         state["bookmaker"], state["deviation"], state["odds_threshold"]
     )
 
-    event_data = [
-        {
-            "Id": fixture.id,
-            "Home team": fixture.home_team_name,
-            "Away team": fixture.away_team_name,
-            "Date": fixture.date,
-            "League": fixture.league.name,
-        }
-        for fixture in fixtures
-    ]
+    event_data = []
+
+    for fixture in fixtures:
+        # conditions that were met to match this fixture
+        match_conditions = []
+        # iterate over dict keys and values
+        for key, value in fixture.get_conditions().items():
+            if value is True:
+                match_conditions.append(key)
+
+        match_condition = ", ".join(match_conditions)
+
+        event_data.append(
+            {
+                "Id": fixture.id,
+                "Home team": fixture.home_team_name,
+                "Away team": fixture.away_team_name,
+                "Date": fixture.date,
+                "League": fixture.league.name,
+                "Condition": match_condition,
+            }
+        )
+
     df = pd.DataFrame(event_data)
     return fixtures, df
 
@@ -172,7 +194,7 @@ def check_auth(username, password):
     return username == "bet" and password == UI_PASSWORD
 
 
-def main():
+def get_gradio_app():
     block = gr.Blocks(css="footer{display:none !important}")
     with block:
         # database Events that are used to create dataframe views
@@ -194,20 +216,45 @@ def main():
             outputs=[state],
         )
 
-        deviation_slider = gr.Slider(
-            minimum=MINIMUM_DEVIATION,
-            maximum=MAXIMUM_DEVIATION,
-            value=DEFAULT_DEVIATION,
-            step=1,
-            interactive=True,
-            label="Deviation threshold",
-        )
+        with gr.Row():
+            direction_dropdown = gr.Dropdown(
+                ["lower", "higher", "both"],
+                value="both",
+                interactive=True,
+                label="Deviation direction",
+            )
 
-        deviation_slider.change(
-            update_deviation,
-            inputs=[deviation_slider, state],
-            outputs=[state],
-        )
+            strategy_dropdown = gr.Dropdown(
+                ["percent", "absolute"],
+                value="percent",
+                interactive=True,
+                label="Deviation strategy",
+            )
+
+        with gr.Row():
+            absolute_deviation_slider = gr.Slider(
+                minimum=1,
+                maximum=10,
+                value=2,
+                step=0.1,
+                interactive=True,
+                label="Absolute deviation threshold",
+            )
+
+            deviation_slider = gr.Slider(
+                minimum=MINIMUM_DEVIATION,
+                maximum=MAXIMUM_DEVIATION,
+                value=DEFAULT_DEVIATION,
+                step=1,
+                interactive=True,
+                label="Percent deviation threshold",
+            )
+
+            deviation_slider.change(
+                update_deviation,
+                inputs=[deviation_slider, state],
+                outputs=[state],
+            )
 
         odds_slider = gr.Slider(
             minimum=MINIMUM_ODDS_THRESHOLD,
@@ -256,4 +303,10 @@ def main():
         # running the function on page load in addition to when the button is clicked
         block.load(fetch_events, inputs=[state], outputs=[fixtures, data])
 
-    block.launch(auth=check_auth)
+    return block
+
+
+demo = get_gradio_app()
+
+if __name__ == "__main__":
+    demo.launch(auth=check_auth)

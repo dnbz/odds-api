@@ -44,7 +44,6 @@ MAXIMUM_PERCENT_DEVIATION = 60
 def get_bookmakers():
     # return []
     async def async_get_bookmakers():
-        SessionLocal().run
         async with SessionLocal() as session:
             data = await get_bet_bookmakers(session)
             return data
@@ -53,7 +52,7 @@ def get_bookmakers():
         logging.info(
             "Event loop is already running, skipping async call and using default values for bookmakers."
         )
-        return ["fonbet - 0", "marathon - 0", "pinnacle - 0", "betcity - 0j"]
+        return ["fonbet - 0", "marathon - 0", "pinnacle - 0", "betcity - 0"]
     else:
         bookmaker_data = asyncio.run(async_get_bookmakers())
 

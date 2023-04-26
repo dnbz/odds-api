@@ -8,7 +8,17 @@ from pandas import DataFrame
 
 from oddsapi.database.init import SessionLocal
 from oddsapi.database.repository.bet import get_bet_bookmakers
-from oddsapi.filter.fixture import find_filtered_fixtures
+from oddsapi.filter.fixture import (
+    find_filtered_fixtures,
+    DeviationStrategy,
+    DeviationDirection,
+    DEFAULT_DEVIATION_STRATEGY,
+    DEFAULT_DEVIATION_DIRECTION,
+    DEFAULT_ODDS_THRESHOLD,
+    DEFAULT_PERCENT_DEVIATION,
+    FixtureQueryParams,
+    DEFAULT_ABSOLUTE_DEVIATION,
+)
 from oddsapi.settings import (
     MAX_ODDS,
     DEVIATION_THRESHOLD,
@@ -21,13 +31,14 @@ matplotlib.use("Agg")
 
 import pandas as pd
 
-MINIMUM_ODDS_THRESHOLD = 1.01
-MAXIMUM_ODDS_THRESHOLD = 7
-DEFAULT_ODDS_THRESHOLD = MAX_ODDS
+MINIMUM_ODDS_THRESHOLD = 1.0
+MAXIMUM_ODDS_THRESHOLD = 10.0
 
-MINIMUM_DEVIATION = 15
-MAXIMUM_DEVIATION = 60
-DEFAULT_DEVIATION = DEVIATION_THRESHOLD
+MINIMUM_ABSOLUTE_DEVIATION = 1.0
+MAXIMUM_ABSOLUTE_DEVIATION = 10.0
+
+MINIMUM_PERCENT_DEVIATION = 15
+MAXIMUM_PERCENT_DEVIATION = 60
 
 
 def get_bookmakers():
@@ -54,19 +65,19 @@ def get_bookmakers():
     return result
 
 
-def get_fixtures(
-    bookmaker: str,
-    deviation: float,
-    odds_threshold: float,
-):
+def get_fixtures(state: dict):
+    params = FixtureQueryParams(
+        percent_deviation_threshold=state["percent_deviation"],
+        absolute_deviation_threshold=state["absolute_deviation"],
+        max_odds=state["odds_threshold"],
+        reference_bookmaker=state["reference_bookmaker"],
+        deviation_strategy=state["deviation_strategy"],
+        deviation_direction=state["deviation_direction"],
+    )
+
     async def async_get_data():
         async with SessionLocal() as session:
-            f = await find_filtered_fixtures(
-                session,
-                reference_bookmaker=bookmaker,
-                deviation_threshold=deviation,
-                max_odds=odds_threshold,
-            )
+            f = await find_filtered_fixtures(session, params)
             return f
 
     fixtures = asyncio.run(async_get_data())
@@ -76,9 +87,8 @@ def get_fixtures(
 def fetch_events(
     state: dict,
 ):
-    fixtures = get_fixtures(
-        state["bookmaker"], state["deviation"], state["odds_threshold"]
-    )
+    print(state)
+    fixtures = get_fixtures(state)
 
     event_data = []
 
@@ -127,11 +137,15 @@ def event_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list, state: 
         }
         for bet in fixture.bets
     ]
-    # filter the dictionaries where "Bookmaker" is equal to "mybk"
-    reference_bk_odds = [d for d in odds_data if d["Bookmaker"] == state["bookmaker"]]
+    # filter the dictionaries where "Bookmaker"
+    reference_bk_odds = [
+        d for d in odds_data if d["Bookmaker"] == state["reference_bookmaker"]
+    ]
 
     # filter the dictionaries where "Bookmaker" is not equal to "mybk"
-    other_bk_odds = [d for d in odds_data if d["Bookmaker"] != state["bookmaker"]]
+    other_bk_odds = [
+        d for d in odds_data if d["Bookmaker"] != state["reference_bookmaker"]
+    ]
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
@@ -163,22 +177,40 @@ def info_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list, state: d
 
 def get_default_state() -> dict:
     default_state = {
-        "bookmaker": REFERENCE_BOOKMAKER,
-        "deviation": DEFAULT_DEVIATION,
+        "reference_bookmaker": REFERENCE_BOOKMAKER,
+        "deviation_direction": DEFAULT_DEVIATION_DIRECTION,
+        "deviation_strategy": DEFAULT_DEVIATION_STRATEGY,
         "odds_threshold": DEFAULT_ODDS_THRESHOLD,
+        "percent_deviation": DEFAULT_PERCENT_DEVIATION,
+        "absolute_deviation": DEFAULT_ABSOLUTE_DEVIATION,
     }
 
     return default_state
 
 
-def update_bookmaker(val: str, s: State):
+def update_reference_bookmaker(val: str, s: State):
     bk = val.split(" - ")[0]
-    s["bookmaker"] = bk
+    s["reference_bookmaker"] = bk
     return s
 
 
-def update_deviation(val: int, s: State):
-    s["deviation"] = val
+def update_strategy(val: str, s: State):
+    s["deviation_strategy"] = val
+    return s
+
+
+def update_deviation_direction(val: str, s: State):
+    s["deviation_direction"] = val
+    return s
+
+
+def update_percent_deviation(val: int, s: State):
+    s["percent_deviation"] = val
+    return s
+
+
+def update_absolute_deviation(val: int, s: State):
+    s["absolute_deviation"] = val
     return s
 
 
@@ -211,48 +243,68 @@ def get_gradio_app():
         )
 
         bk_dropdown.select(
-            update_bookmaker,
+            update_reference_bookmaker,
             inputs=[bk_dropdown, state],
             outputs=[state],
         )
 
         with gr.Row():
             direction_dropdown = gr.Dropdown(
-                ["lower", "higher", "both"],
-                value="both",
+                # take the keys from the enum
+                [s.value for s in DeviationDirection],
+                value=DEFAULT_DEVIATION_DIRECTION,
                 interactive=True,
                 label="Deviation direction",
             )
 
+            direction_dropdown.select(
+                update_deviation_direction,
+                inputs=[direction_dropdown, state],
+                outputs=[state],
+            )
+
             strategy_dropdown = gr.Dropdown(
-                ["percent", "absolute"],
-                value="percent",
+                # take the keys from the enum
+                [s.value for s in DeviationStrategy],
+                value=DEFAULT_DEVIATION_STRATEGY,
                 interactive=True,
                 label="Deviation strategy",
             )
 
+            strategy_dropdown.select(
+                update_strategy,
+                inputs=[strategy_dropdown, state],
+                outputs=[state],
+            )
+
         with gr.Row():
             absolute_deviation_slider = gr.Slider(
-                minimum=1,
-                maximum=10,
-                value=2,
+                minimum=MINIMUM_ABSOLUTE_DEVIATION,
+                maximum=MAXIMUM_ABSOLUTE_DEVIATION,
+                value=DEFAULT_ABSOLUTE_DEVIATION,
                 step=0.1,
                 interactive=True,
                 label="Absolute deviation threshold",
             )
 
-            deviation_slider = gr.Slider(
-                minimum=MINIMUM_DEVIATION,
-                maximum=MAXIMUM_DEVIATION,
-                value=DEFAULT_DEVIATION,
+            absolute_deviation_slider.change(
+                update_absolute_deviation,
+                inputs=[absolute_deviation_slider, state],
+                outputs=[state],
+            )
+
+            percent_deviation_slider = gr.Slider(
+                minimum=MINIMUM_PERCENT_DEVIATION,
+                maximum=MAXIMUM_PERCENT_DEVIATION,
+                value=DEFAULT_PERCENT_DEVIATION,
                 step=1,
                 interactive=True,
                 label="Percent deviation threshold",
             )
 
-            deviation_slider.change(
-                update_deviation,
-                inputs=[deviation_slider, state],
+            percent_deviation_slider.change(
+                update_percent_deviation,
+                inputs=[percent_deviation_slider, state],
                 outputs=[state],
             )
 
@@ -294,11 +346,9 @@ def get_gradio_app():
                         inputs=[data, fixtures, state],
                         outputs=info_data,
                     )
-                with gr.Row():
-                    data_run = gr.Button("Refresh")
-                    data_run.click(
-                        fetch_events, inputs=[state], outputs=[fixtures, data]
-                    )
+
+                data_run = gr.Button("Refresh")
+                data_run.click(fetch_events, inputs=[state], outputs=[fixtures, data])
 
         # running the function on page load in addition to when the button is clicked
         block.load(fetch_events, inputs=[state], outputs=[fixtures, data])

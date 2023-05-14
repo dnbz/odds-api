@@ -1,10 +1,12 @@
 import asyncio
+import datetime
 
 from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import with_expression
 
 from oddsapi.database.repository.season import upsert_season
-from oddsapi.database.models import League, Season
+from oddsapi.database.models import League, Season, Fixture
 
 
 async def upsert_league(data: dict, session: AsyncSession):
@@ -56,3 +58,28 @@ async def delete_all_leagues(session: AsyncSession):
 async def get_league_count(session: AsyncSession) -> int:
     stmt = select(func.count(League.id))
     return (await session.scalars(stmt)).first()
+
+
+async def get_leagues_with_fixtures(session: AsyncSession) -> list[League]:
+    """
+    find all leagues that have at least one Fixture
+    """
+    cutoff_period = 14  # days
+
+    # two weeks forward date
+    date = datetime.datetime.now() + datetime.timedelta(days=cutoff_period)
+
+    fixture_cte = (
+        select(Fixture.league_id, func.count().label("league_count"))
+        .group_by(Fixture.league_id)
+        .where(Fixture.date < date)
+        .cte("fixture_cte")
+    )
+
+    stmt = (
+        select(League, fixture_cte.c.league_count)
+        .join(fixture_cte, League.id == fixture_cte.c.league_id)
+        .options(with_expression(League.fixture_count, fixture_cte.c.league_count))
+    )
+
+    return (await session.scalars(stmt)).all() # noqa

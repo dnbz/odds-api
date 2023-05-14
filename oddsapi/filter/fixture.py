@@ -40,6 +40,7 @@ class FixtureQueryParams:
     reference_bookmaker: str | None = REFERENCE_BOOKMAKER
     deviation_strategy: DeviationStrategy = DEFAULT_DEVIATION_STRATEGY
     deviation_direction: DeviationDirection = DEFAULT_DEVIATION_DIRECTION
+    league_ids: list[int] | None = None
 
 
 def _get_select_filtered_fixtures(
@@ -154,6 +155,9 @@ def _get_select_filtered_fixtures(
 
     if params.reference_bookmaker:
         stmt = stmt.where(Fixture.bets.any(Bet.bookmaker == params.reference_bookmaker))
+
+    if params.league_ids:
+        stmt = stmt.where(Fixture.league_id.in_(params.league_ids))
 
     # print(stmt.compile(compile_kwargs={"literal_binds": True}))
 

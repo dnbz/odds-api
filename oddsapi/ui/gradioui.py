@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import gradio as gr
 import matplotlib
@@ -7,7 +6,6 @@ from gradio import State
 from pandas import DataFrame
 
 from oddsapi.database.init import SessionLocal
-from oddsapi.database.repository.bet import get_bet_bookmakers
 from oddsapi.filter.fixture import (
     find_filtered_fixtures,
     DeviationStrategy,
@@ -20,12 +18,11 @@ from oddsapi.filter.fixture import (
     DEFAULT_ABSOLUTE_DEVIATION,
 )
 from oddsapi.settings import (
-    MAX_ODDS,
-    DEVIATION_THRESHOLD,
     REFERENCE_BOOKMAKER,
     UI_PASSWORD,
     APP_ENV,
 )
+from oddsapi.ui.helpers import get_bookmakers, get_leagues
 
 matplotlib.use("Agg")
 
@@ -40,31 +37,17 @@ MAXIMUM_ABSOLUTE_DEVIATION = 10.0
 MINIMUM_PERCENT_DEVIATION = 15
 MAXIMUM_PERCENT_DEVIATION = 60
 
-
-def get_bookmakers():
-    # return []
-    async def async_get_bookmakers():
-        async with SessionLocal() as session:
-            data = await get_bet_bookmakers(session)
-            return data
-
-    if asyncio.get_event_loop().is_running():
-        logging.info(
-            "Event loop is already running, skipping async call and using default values for bookmakers."
-        )
-        return ["fonbet - 0", "marathon - 0", "pinnacle - 0", "betcity - 0"]
-    else:
-        bookmaker_data = asyncio.run(async_get_bookmakers())
-
-    # concatenate bookmaker names and count
-    result = []
-    for bookmaker in bookmaker_data:
-        result.append(f"{bookmaker[0]} - {bookmaker[1]}")
-
-    return result
+# globals (meh)
+leagues = get_leagues()
+bookmakers = get_bookmakers()
 
 
 def get_fixtures(state: dict):
+    # leagues
+    selected_league_ids = []
+    for league_index in state["league_indexes"]:
+        selected_league_ids.append(leagues[league_index].id)
+
     params = FixtureQueryParams(
         percent_deviation_threshold=state["percent_deviation"],
         absolute_deviation_threshold=state["absolute_deviation"],
@@ -72,6 +55,7 @@ def get_fixtures(state: dict):
         reference_bookmaker=state["reference_bookmaker"],
         deviation_strategy=state["deviation_strategy"],
         deviation_direction=state["deviation_direction"],
+        league_ids=selected_league_ids,
     )
 
     async def async_get_data():
@@ -86,7 +70,6 @@ def get_fixtures(state: dict):
 def fetch_events(
     state: dict,
 ):
-    print(state)
     fixtures = get_fixtures(state)
 
     event_data = []
@@ -162,6 +145,8 @@ def info_on_select(evt: gr.SelectData, data: DataFrame, fixtures: list, state: d
     if fixture is None:
         return None
 
+    source_links = {f"{bet.source}": bet.source for bet in fixture.bets}
+
     # create a dataframe with the odds for the selected fixture
     data = {
         "Source update": fixture.source_update,
@@ -182,6 +167,7 @@ def get_default_state() -> dict:
         "odds_threshold": DEFAULT_ODDS_THRESHOLD,
         "percent_deviation": DEFAULT_PERCENT_DEVIATION,
         "absolute_deviation": DEFAULT_ABSOLUTE_DEVIATION,
+        "league_indexes": [],
     }
 
     return default_state
@@ -190,6 +176,11 @@ def get_default_state() -> dict:
 def update_reference_bookmaker(val: str, s: State):
     bk = val.split(" - ")[0]
     s["reference_bookmaker"] = bk
+    return s
+
+
+def update_league(val: list[int], s: State):
+    s["league_indexes"] = val
     return s
 
 
@@ -235,7 +226,7 @@ def get_gradio_app():
 
         gr.Markdown("""Bets""")
         bk_dropdown = gr.Dropdown(
-            get_bookmakers(),
+            bookmakers,
             value=REFERENCE_BOOKMAKER,
             interactive=True,
             label="Reference bookmaker",
@@ -244,6 +235,25 @@ def get_gradio_app():
         bk_dropdown.select(
             update_reference_bookmaker,
             inputs=[bk_dropdown, state],
+            outputs=[state],
+        )
+
+        # concatenate bookmaker names and count
+        leagues_str = [f"{league.name} - {league.fixture_count}" for league in leagues]
+
+        league_dropdown = gr.Dropdown(
+            leagues_str,
+            value=None,
+            interactive=True,
+            multiselect=True,
+            max_choices=5,
+            type="index",
+            label="League",
+        )
+
+        league_dropdown.select(
+            update_league,
+            inputs=[league_dropdown, state],
             outputs=[state],
         )
 

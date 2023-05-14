@@ -200,6 +200,8 @@ class League(Base):
     seasons: Mapped[list["Season"]] = relationship("Season", back_populates="league")
     fixtures: Mapped[list["Fixture"]] = relationship("Fixture", back_populates="league")
 
+    fixture_count: Mapped[int] = query_expression()
+
 
 class Notification(Base):
     __tablename__ = "notification"

@@ -127,6 +127,9 @@ def _get_select_filtered_fixtures(
         cte_avg, cte_avg.c.fixture_id == Bet.fixture_id
     )
 
+    if params.reference_bookmaker:
+        condition_stmt = condition_stmt.where(Bet.bookmaker != params.reference_bookmaker)
+
     for bet_filter in bet_filters:
         condition_stmt = condition_stmt.add_columns(bet_filter)
 
@@ -139,15 +142,17 @@ def _get_select_filtered_fixtures(
     ]
 
     if params.all_bets_must_match:
-        filter_condition = (and_(*condition_columns))
+        stmt = (
+            select(Fixture)
+            .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
+            .where(and_(*condition_columns))
+        )
     else:
-        filter_condition = (or_(*condition_columns))
-
-    stmt = (
-        select(Fixture)
-        .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
-        .where(filter_condition)
-    )
+        stmt = (
+            select(Fixture)
+            .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
+            .where(or_(*condition_columns))
+        )
 
     # dynamically load the columns that represent which condition has been met
     expression = [

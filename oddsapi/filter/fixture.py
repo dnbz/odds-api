@@ -98,7 +98,12 @@ def _get_select_filtered_fixtures(
         odds_clause = getattr(cte_avg.c, f"median_{column}") < params.max_odds
 
         # Bet should be both within the odds limit and above the deviation threshold
-        clause = (odds_clause & deviation_clause).label(f"condition_{column}")
+        clause = odds_clause & deviation_clause
+
+        if params.all_bets_must_match:
+            clause = func.bool_and(clause)
+
+        clause = clause.label(f"condition_{column}")
 
         bet_filters.append(clause)
 
@@ -110,10 +115,7 @@ def _get_select_filtered_fixtures(
         condition_stmt = condition_stmt.group_by(Bet.fixture_id)
 
     for bet_filter in bet_filters:
-        if params.all_bets_must_match:
-            condition_stmt = condition_stmt.having(func.min(bet_filter) == True)
-        else:
-            condition_stmt = condition_stmt.add_columns(bet_filter)
+        condition_stmt = condition_stmt.add_columns(bet_filter)
 
     cte_condition = condition_stmt.cte("cte_condition")
 

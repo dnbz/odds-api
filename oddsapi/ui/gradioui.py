@@ -55,6 +55,7 @@ def get_fixtures(state: dict):
         reference_bookmaker=state["reference_bookmaker"],
         deviation_strategy=state["deviation_strategy"],
         deviation_direction=state["deviation_direction"],
+        all_bets_must_match=state["all_bets_must_match"],
         league_ids=selected_league_ids,
     )
 

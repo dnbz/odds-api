@@ -85,6 +85,6 @@ async def get_leagues_with_fixtures(
         .options(with_expression(League.fixture_count, fixture_cte.c.league_count))
     )
 
-    print(stmt.compile(compile_kwargs={"literal_binds": True}))
+    # print(stmt.compile(compile_kwargs={"literal_binds": True}))
 
     return (await session.scalars(stmt)).all()  # noqa

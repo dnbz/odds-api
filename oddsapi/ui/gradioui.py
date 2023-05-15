@@ -324,7 +324,7 @@ with block:
     )
     fixture_data.select(
         info_on_select,
-        inputs=[fixture_data, fixtures, state],
+        inputs=[fixture_data, fixtures],
         outputs=info_data,
     )
 

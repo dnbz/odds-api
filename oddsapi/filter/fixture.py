@@ -112,6 +112,7 @@ def _get_select_filtered_fixtures(
     )
 
     if params.all_bets_must_match:
+        condition_stmt = condition_stmt.where(Bet.bookmaker != params.reference_bookmaker)
         condition_stmt = condition_stmt.group_by(Bet.fixture_id)
 
     for bet_filter in bet_filters:

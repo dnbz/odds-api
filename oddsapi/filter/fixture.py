@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from sqlalchemy import select, or_, Sequence, RowMapping, and_
+from sqlalchemy import select, or_, Sequence, RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, with_expression
 from sqlalchemy.sql.functions import percentile_disc, func, now
@@ -127,9 +127,6 @@ def _get_select_filtered_fixtures(
         cte_avg, cte_avg.c.fixture_id == Bet.fixture_id
     )
 
-    if params.reference_bookmaker:
-        condition_stmt = condition_stmt.where(Bet.bookmaker != params.reference_bookmaker)
-
     for bet_filter in bet_filters:
         condition_stmt = condition_stmt.add_columns(bet_filter)
 
@@ -141,18 +138,11 @@ def _get_select_filtered_fixtures(
         for col in col_names
     ]
 
-    if params.all_bets_must_match:
-        stmt = (
-            select(Fixture)
-            .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
-            .where(and_(*condition_columns))
-        )
-    else:
-        stmt = (
-            select(Fixture)
-            .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
-            .where(or_(*condition_columns))
-        )
+    stmt = (
+        select(Fixture)
+        .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
+        .where(or_(*condition_columns))
+    )
 
     # dynamically load the columns that represent which condition has been met
     expression = [

@@ -139,14 +139,14 @@ def _get_select_filtered_fixtures(
     ]
 
     if params.all_bets_must_match:
-        sql_filter_ = and_
+        filter_condition = (and_(*condition_columns))
     else:
-        sql_filter_ = or_
+        filter_condition = (or_(*condition_columns))
 
     stmt = (
         select(Fixture)
         .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
-        .where(sql_filter_(*condition_columns))
+        .where(filter_condition)
     )
 
     # dynamically load the columns that represent which condition has been met

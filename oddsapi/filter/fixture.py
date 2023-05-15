@@ -51,27 +51,6 @@ def _get_select_filtered_fixtures(
     filtering_columns = [Bet.away_win, Bet.home_win, Bet.draw]
     col_names = [col.name for col in filtering_columns]
 
-    # avg_columns = []
-    # for column in col_names:
-    #     clause = (
-    #         percentile_disc(0.5)
-    #         .within_group(getattr(Bet, column))
-    #         .label(f"median_{column}")
-    #     )
-    #
-    #     avg_columns.append(clause)
-
-    # cte_avg = (
-    #     select(
-    #         *avg_columns,
-    #         Bet.fixture_id,
-    #     )
-    #     .join(Bet.fixture)
-    #     .where(Fixture.date > now())
-    #     .group_by(Bet.fixture_id)
-    #     .cte("cte_avg")
-    # )
-
     avg_columns = []
     for column in col_names:
         clause = getattr(Bet, column).label(f"median_{column}")
@@ -127,8 +106,14 @@ def _get_select_filtered_fixtures(
         cte_avg, cte_avg.c.fixture_id == Bet.fixture_id
     )
 
+    if params.all_bets_must_match:
+        condition_stmt = condition_stmt.group_by(Bet.fixture_id)
+
     for bet_filter in bet_filters:
-        condition_stmt = condition_stmt.add_columns(bet_filter)
+        if params.all_bets_must_match:
+            condition_stmt = condition_stmt.having(func.min(bet_filter) == True)
+        else:
+            condition_stmt = condition_stmt.add_columns(bet_filter)
 
     cte_condition = condition_stmt.cte("cte_condition")
 

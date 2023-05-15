@@ -246,16 +246,16 @@ def get_gradio_app():
                 outputs=[state],
             )
 
-            # all_bets_must_match = gr.Checkbox(
-            #     label="All bets must match",
-            #     value=True,
-            # )
-            #
-            # all_bets_must_match.select(
-            #     update_all_bets_must_match,
-            #     inputs=[all_bets_must_match, state],
-            #     outputs=[state],
-            # )
+            all_bets_must_match = gr.Checkbox(
+                label="All bets must match",
+                value=True,
+            )
+
+            all_bets_must_match.select(
+                update_all_bets_must_match,
+                inputs=[all_bets_must_match, state],
+                outputs=[state],
+            )
 
         # concatenate bookmaker names and count
         leagues_str = [f"{league.name} - {league.fixture_count}" for league in leagues]

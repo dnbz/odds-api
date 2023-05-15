@@ -86,12 +86,12 @@ def fetch_events(
 
         event_data.append(
             {
-                "Id": fixture.id,
-                "Home team": fixture.home_team_name,
-                "Away team": fixture.away_team_name,
-                "Date": fixture.date,
-                "League": fixture.league.name,
-                "Condition": match_condition,
+                "ID": fixture.id,
+                "Хозяева": fixture.home_team_name,
+                "Гости": fixture.away_team_name,
+                "Дата": fixture.date,
+                "Лига": fixture.league.name,
+                "Условие": match_condition,
             }
         )
 
@@ -112,10 +112,10 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
     # create a dataframe with the odds for the selected fixture
     odds_data = [
         {
-            "Bookmaker": bet.bookmaker,
-            "Home odds": bet.home_win,
-            "Draw odds": bet.draw,
-            "Away odds": bet.away_win,
+            "Букмекер": bet.bookmaker,
+            "Победа хозяев": bet.home_win,
+            "Ничья": bet.draw,
+            "Победа гостей": bet.away_win,
         }
         for bet in fixture.bets
     ]
@@ -147,9 +147,7 @@ def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
 
     # create a dataframe with the odds for the selected fixture
     df_data = {
-        "Source update": fixture.source_update,
-        "Date": fixture.date,
-        "Away_team_logo": fixture.away_team_logo,
+        "Дата события": fixture.date,
     }
 
     df = pd.DataFrame([df_data])
@@ -230,18 +228,18 @@ with block:
 
     state = gr.State(value=get_default_state())
 
-    gr.Markdown("""Bets""")
+    gr.Markdown("""Bet""")
 
     with gr.Row():
         bk_dropdown = gr.Dropdown(
             bookmakers,
             value=REFERENCE_BOOKMAKER,
             interactive=True,
-            label="Reference bookmaker",
+            label="Основной букмекер",
         )
 
         all_bets_must_match = gr.Checkbox(
-            label="All bets must match",
+            label="Все ставки для события должны подходить",
             value=True,
         )
 
@@ -252,7 +250,7 @@ with block:
         multiselect=True,
         max_choices=5,
         type="index",
-        label="League",
+        label="Лиги",
     )
 
     with gr.Row():
@@ -261,7 +259,7 @@ with block:
             [s.value for s in DeviationDirection],
             value=DEFAULT_DEVIATION_DIRECTION,
             interactive=True,
-            label="Deviation direction",
+            label="Направление отклонения",
         )
 
         strategy_dropdown = gr.Dropdown(
@@ -269,7 +267,7 @@ with block:
             [s.value for s in DeviationStrategy],
             value=DEFAULT_DEVIATION_STRATEGY,
             interactive=True,
-            label="Deviation strategy",
+            label="Стратегия отклонения",
         )
 
     with gr.Row():
@@ -279,7 +277,7 @@ with block:
             value=DEFAULT_ABSOLUTE_DEVIATION,
             step=0.1,
             interactive=True,
-            label="Absolute deviation threshold",
+            label="Минимальное отклонение",
         )
 
         percent_deviation_slider = gr.Slider(
@@ -288,7 +286,7 @@ with block:
             value=DEFAULT_PERCENT_DEVIATION,
             step=1,
             interactive=True,
-            label="Percent deviation threshold",
+            label="Минимальное отклонение %",
         )
 
     odds_slider = gr.Slider(
@@ -297,20 +295,20 @@ with block:
         value=DEFAULT_ODDS_THRESHOLD,
         step=0.10,
         interactive=True,
-        label="Limit odds",
+        label="Ограничение коэффициентов",
     )
 
     with gr.Tabs():
-        with gr.TabItem("Detail"):
+        with gr.TabItem("Кэфы"):
             with gr.Row():
                 detail_data = gr.components.Dataframe(type="pandas")
 
-        with gr.TabItem("Info"):
+        with gr.TabItem("Информация"):
             with gr.Row():
                 info_data = gr.components.Dataframe(type="pandas")
 
     with gr.Tabs():
-        with gr.TabItem("Events"):
+        with gr.TabItem("События"):
             with gr.Row():
                 fixture_data = gr.components.Dataframe(type="pandas", interactive=False)
 

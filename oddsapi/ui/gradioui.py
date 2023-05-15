@@ -86,7 +86,7 @@ def fetch_events(
 
         event_data.append(
             {
-                "ID": fixture.id,
+                "Id": fixture.id,
                 "Хозяева": fixture.home_team_name,
                 "Гости": fixture.away_team_name,
                 "Дата": fixture.date,
@@ -119,14 +119,14 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
         }
         for bet in fixture.bets
     ]
-    # filter the dictionaries where "Bookmaker"
+    # filter the dictionaries where "Букмекер"
     reference_bk_odds = [
-        d for d in odds_data if d["Bookmaker"] == param_state["reference_bookmaker"]
+        d for d in odds_data if d["Букмекер"] == param_state["reference_bookmaker"]
     ]
 
     # filter the dictionaries where "Bookmaker" is not equal to "mybk"
     other_bk_odds = [
-        d for d in odds_data if d["Bookmaker"] != param_state["reference_bookmaker"]
+        d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
     ]
 
     # create a dataframe from the filtered dictionaries

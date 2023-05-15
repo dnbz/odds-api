@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from sqlalchemy import select, or_, Sequence, RowMapping
+from sqlalchemy import select, or_, Sequence, RowMapping, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, with_expression
 from sqlalchemy.sql.functions import percentile_disc, func, now
@@ -40,6 +40,7 @@ class FixtureQueryParams:
     reference_bookmaker: str | None = REFERENCE_BOOKMAKER
     deviation_strategy: DeviationStrategy = DEFAULT_DEVIATION_STRATEGY
     deviation_direction: DeviationDirection = DEFAULT_DEVIATION_DIRECTION
+    all_bets_must_match: bool = True
     league_ids: list[int] | None = None
 
 
@@ -137,10 +138,15 @@ def _get_select_filtered_fixtures(
         for col in col_names
     ]
 
+    if params.all_bets_must_match:
+        sql_filter_ = and_
+    else:
+        sql_filter_ = or_
+
     stmt = (
         select(Fixture)
         .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
-        .where(or_(*condition_columns))
+        .where(sql_filter_(*condition_columns))
     )
 
     # dynamically load the columns that represent which condition has been met

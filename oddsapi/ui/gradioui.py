@@ -167,6 +167,7 @@ def get_default_state() -> dict:
         "odds_threshold": DEFAULT_ODDS_THRESHOLD,
         "percent_deviation": DEFAULT_PERCENT_DEVIATION,
         "absolute_deviation": DEFAULT_ABSOLUTE_DEVIATION,
+        "all_bets_must_match": True,
         "league_indexes": [],
     }
 
@@ -191,6 +192,11 @@ def update_strategy(val: str, s: State):
 
 def update_deviation_direction(val: str, s: State):
     s["deviation_direction"] = val
+    return s
+
+
+def update_all_bets_must_match(val: bool, s: State):
+    s["all_bets_must_match"] = val
     return s
 
 
@@ -225,18 +231,31 @@ def get_gradio_app():
         state = gr.State(value=get_default_state())
 
         gr.Markdown("""Bets""")
-        bk_dropdown = gr.Dropdown(
-            bookmakers,
-            value=REFERENCE_BOOKMAKER,
-            interactive=True,
-            label="Reference bookmaker",
-        )
 
-        bk_dropdown.select(
-            update_reference_bookmaker,
-            inputs=[bk_dropdown, state],
-            outputs=[state],
-        )
+        with gr.Row():
+            bk_dropdown = gr.Dropdown(
+                bookmakers,
+                value=REFERENCE_BOOKMAKER,
+                interactive=True,
+                label="Reference bookmaker",
+            )
+
+            bk_dropdown.select(
+                update_reference_bookmaker,
+                inputs=[bk_dropdown, state],
+                outputs=[state],
+            )
+
+            all_bets_must_match = gr.Checkbox(
+                label="All bets must match",
+                value=True,
+            )
+
+            all_bets_must_match.select(
+                update_all_bets_must_match,
+                inputs=[all_bets_must_match, state],
+                outputs=[state],
+            )
 
         # concatenate bookmaker names and count
         leagues_str = [f"{league.name} - {league.fixture_count}" for league in leagues]

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import with_expression
 
 from oddsapi.database.repository.season import upsert_season
-from oddsapi.database.models import League, Season, Fixture
+from oddsapi.database.models import League, Season, Fixture, Bet
 
 
 async def upsert_league(data: dict, session: AsyncSession):
@@ -60,7 +60,9 @@ async def get_league_count(session: AsyncSession) -> int:
     return (await session.scalars(stmt)).first()
 
 
-async def get_leagues_with_fixtures(session: AsyncSession) -> list[League]:
+async def get_leagues_with_fixtures(
+    session: AsyncSession, bookmaker: str
+) -> list[League]:
     """
     find all leagues that have at least one Fixture
     """
@@ -72,14 +74,17 @@ async def get_leagues_with_fixtures(session: AsyncSession) -> list[League]:
     fixture_cte = (
         select(Fixture.league_id, func.count().label("league_count"))
         .group_by(Fixture.league_id)
-        .where(Fixture.date < date)
+        .where((Fixture.date < date) & (Fixture.bets.any(Bet.bookmaker == bookmaker)))
         .cte("fixture_cte")
     )
 
     stmt = (
         select(League, fixture_cte.c.league_count)
         .join(fixture_cte, League.id == fixture_cte.c.league_id)
+        .order_by(fixture_cte.c.league_count.desc())
         .options(with_expression(League.fixture_count, fixture_cte.c.league_count))
     )
 
-    return (await session.scalars(stmt)).all() # noqa
+    print(stmt.compile(compile_kwargs={"literal_binds": True}))
+
+    return (await session.scalars(stmt)).all()  # noqa

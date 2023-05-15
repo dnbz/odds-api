@@ -2,15 +2,20 @@ import asyncio
 import logging
 
 from oddsapi.database.init import SessionLocal
+from oddsapi.database.models import League
 from oddsapi.database.repository.bet import get_bet_bookmakers
 from oddsapi.database.repository.league import get_leagues_with_fixtures
 
+def get_leagues_str(leagues: list[League]):
+    # concatenate bookmaker names and count
+    leagues_str = [f"{league.name} - {league.fixture_count}" for league in leagues]
+    return leagues_str
 
-def get_leagues():
+def get_leagues(bookmaker: str):
     # return []
     async def async_get_leagues():
         async with SessionLocal() as session:
-            data = await get_leagues_with_fixtures(session)
+            data = await get_leagues_with_fixtures(session, bookmaker)
             return data
 
     try:

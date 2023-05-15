@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from sqlalchemy import select, or_, Sequence, RowMapping
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, with_expression
-from sqlalchemy.sql.functions import percentile_disc, func, now
+from sqlalchemy.sql.functions import func, now
 
 from oddsapi.database.models import Bet, Fixture
 from oddsapi.settings import DEVIATION_THRESHOLD, MAX_ODDS, REFERENCE_BOOKMAKER
@@ -98,7 +98,7 @@ def _get_select_filtered_fixtures(
         odds_clause = getattr(cte_avg.c, f"median_{column}") < params.max_odds
 
         # Bet should be both within the odds limit and above the deviation threshold
-        clause = odds_clause & deviation_clause
+        clause = odds_clause & deviation_clause # noqa
 
         if params.all_bets_must_match:
             clause = func.bool_and(clause)
@@ -142,8 +142,7 @@ def _get_select_filtered_fixtures(
     ]
     stmt = stmt.options(*expression)
 
-    if params.reference_bookmaker:
-        stmt = stmt.where(Fixture.bets.any(Bet.bookmaker == params.reference_bookmaker))
+    stmt = stmt.where(Fixture.bets.any(Bet.bookmaker == params.reference_bookmaker))
 
     if params.league_ids:
         stmt = stmt.where(Fixture.league_id.in_(params.league_ids))

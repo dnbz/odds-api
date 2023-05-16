@@ -34,6 +34,7 @@ class Bet(Base):
         index=True,
     )
     source: Mapped[str] = mapped_column(String(255), index=True)
+    event_url: Mapped[str] = mapped_column(String(511), index=True, nullable=True)
     source_id: Mapped[int] = mapped_column(Integer, index=True, nullable=True)
     source_update: Mapped[datetime] = mapped_column(
         DateTime(True), default=text("CURRENT_TIMESTAMP"), index=True, nullable=True

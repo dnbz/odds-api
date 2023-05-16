@@ -92,6 +92,7 @@ async def upsert_betcity_bet(
         bet.bookmaker = "betcity"
         bet.source = "parser"
         bet.source_update = date
+        bet.event_url = event.event_url
 
         logging.info(f"Adding bet from betcity for fixture with id {fixture.id}...")
 
@@ -142,6 +143,7 @@ async def upsert_marathon_bet(
         bet.bookmaker = "marathon"
         bet.source = "parser"
         bet.source_update = date
+        bet.event_url = event.event_url
 
         logging.info(f"Adding bet from marathon for fixture with id {fixture.id}...")
 
@@ -168,7 +170,7 @@ async def get_bet_bookmakers(session: AsyncSession) -> list | None:
         .order_by(func.count().desc())
     )
     bookmakers = (await session.execute(stmt)).all()
-    return bookmakers
+    return bookmakers # noqa
 
 
 async def upsert_pinnacle_bet(
@@ -203,6 +205,7 @@ async def upsert_pinnacle_bet(
         bet.bookmaker = "pinnacle"
         bet.source = "parser"
         bet.source_update = date
+        bet.event_url = event.event_url
 
         logging.info(f"Adding bet from pinnacle for fixture with id {fixture.id}...")
 
@@ -253,6 +256,7 @@ async def upsert_fonbet_bet(
         bet.bookmaker = "fonbet"
         bet.source = "parser"
         bet.source_update = date
+        bet.event_url = event.event_url
 
         logging.info(f"Adding bet from fonbet for fixture with id {fixture.id}...")
 

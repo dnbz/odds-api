@@ -135,7 +135,7 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
     return df
 
 
-# display the odds for a given fixture on select
+# display the info for a given fixture on select
 def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
     row_id = evt.index[0]
     fixture_id = df_data.iloc[row_id]["Id"]
@@ -146,15 +146,17 @@ def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
         return None
 
     # create a dataframe with the odds for the selected fixture
-    df_data = {
-        "Дата события": fixture.date,
-    }
+    df_data = []
 
     for bet in fixture.bets:
-        key = f"Букмекер {bet.bookmaker}"
-        df_data[key] = bet.event_url
+        data = {
+            "Букмекер": bet.bookmaker,
+            "Ссылка на событие": bet.event_url,
+            "Дата события": fixture.date,
+        }
+        df_data.append(data)
 
-    df = pd.DataFrame([df_data])
+    df = pd.DataFrame(df_data)
 
     return df
 

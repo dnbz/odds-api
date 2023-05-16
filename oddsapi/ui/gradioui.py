@@ -150,6 +150,10 @@ def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
         "Дата события": fixture.date,
     }
 
+    for bet in fixture.bets:
+        key = f"Букмекер {bet.bookmaker}"
+        df_data[key] = bet.event_url
+
     df = pd.DataFrame([df_data])
 
     return df

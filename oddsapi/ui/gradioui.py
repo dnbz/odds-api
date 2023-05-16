@@ -131,6 +131,7 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
+    df = df.sort_values("Букмекер", ascending=True)
 
     return df
 
@@ -157,6 +158,7 @@ def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
         df_data.append(data)
 
     df = pd.DataFrame(df_data)
+    df = df.sort_values("Букмекер", ascending=True)
 
     return df
 

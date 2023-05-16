@@ -129,15 +129,18 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
         d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
     ]
 
+    other_bk_odds = other_bk_odds.sort_values("Букмекер", ascending=True)
+
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
-    df = df.sort_values("Букмекер", ascending=True)
 
     return df
 
 
 # display the info for a given fixture on select
-def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
+def info_on_select(
+    evt: gr.SelectData, df_data: DataFrame, fxs: list, param_state: dict
+):
     row_id = evt.index[0]
     fixture_id = df_data.iloc[row_id]["Id"]
 
@@ -157,8 +160,20 @@ def info_on_select(evt: gr.SelectData, df_data: DataFrame, fxs: list):
         }
         df_data.append(data)
 
-    df = pd.DataFrame(df_data)
-    df = df.sort_values("Букмекер", ascending=True)
+    # filter the dictionaries where "Букмекер"
+    reference_bk_odds = [
+        d for d in data if d["Букмекер"] == param_state["reference_bookmaker"]
+    ]
+
+    # filter the dictionaries where "Bookmaker" is not equal to "mybk"
+    other_bk_odds = [
+        d for d in data if d["Букмекер"] != param_state["reference_bookmaker"]
+    ]
+
+    other_bk_odds = other_bk_odds.sort_values("Букмекер", ascending=True)
+
+    # create a dataframe from the filtered dictionaries
+    df = pd.DataFrame(reference_bk_odds + other_bk_odds)
 
     return df
 

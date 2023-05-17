@@ -129,7 +129,7 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
         d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
     ]
 
-    other_bk_odds = other_bk_odds.sort_values("Букмекер", ascending=True)
+    other_bk_odds = sorted(other_bk_odds, key=lambda d: d['Букмекер'])
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
@@ -162,15 +162,15 @@ def info_on_select(
 
     # filter the dictionaries where "Букмекер"
     reference_bk_odds = [
-        d for d in data if d["Букмекер"] == param_state["reference_bookmaker"]
+        d for d in df_data if d["Букмекер"] == param_state["reference_bookmaker"]
     ]
 
     # filter the dictionaries where "Bookmaker" is not equal to "mybk"
     other_bk_odds = [
-        d for d in data if d["Букмекер"] != param_state["reference_bookmaker"]
+        d for d in df_data if d["Букмекер"] != param_state["reference_bookmaker"]
     ]
 
-    other_bk_odds = other_bk_odds.sort_values("Букмекер", ascending=True)
+    other_bk_odds = sorted(other_bk_odds, key=lambda d: d['Букмекер'])
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
@@ -345,7 +345,7 @@ with block:
     )
     fixture_data.select(
         info_on_select,
-        inputs=[fixture_data, fixtures],
+        inputs=[fixture_data, fixtures, state],
         outputs=info_data,
     )
 

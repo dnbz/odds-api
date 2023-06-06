@@ -5,7 +5,7 @@ RUN pip install supervisor
 
 # install PDM
 RUN pip install -U pip setuptools wheel
-RUN pip install pdm
+RUN pip install pdm==2.4.0
 
 COPY pyproject.toml pdm.lock ./
 RUN pdm install --prod --no-lock --no-editable

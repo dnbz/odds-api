@@ -129,7 +129,7 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
         d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
     ]
 
-    other_bk_odds = sorted(other_bk_odds, key=lambda d: d['Букмекер'])
+    other_bk_odds = sorted(other_bk_odds, key=lambda d: d["Букмекер"])
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
@@ -170,7 +170,43 @@ def info_on_select(
         d for d in df_data if d["Букмекер"] != param_state["reference_bookmaker"]
     ]
 
-    other_bk_odds = sorted(other_bk_odds, key=lambda d: d['Букмекер'])
+    other_bk_odds = sorted(other_bk_odds, key=lambda d: d["Букмекер"])
+
+    # create a dataframe from the filtered dictionaries
+    df = pd.DataFrame(reference_bk_odds + other_bk_odds)
+
+    return df
+
+
+def dates_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: dict):
+    row_id = evt.index[0]
+    fixture_id = df.iloc[row_id]["Id"]
+
+    fixture = next((f for f in fxs if f.id == fixture_id), None)
+
+    if fixture is None:
+        return None
+
+    # create a dataframe with the odds for the selected fixture
+    odds_data = [
+        {
+            "Букмекер": bet.bookmaker,
+            "Дата обновления": bet.updated_at,
+            "Дата проведения": bet.source_update,
+        }
+        for bet in fixture.bets
+    ]
+    # filter the dictionaries where "Букмекер"
+    reference_bk_odds = [
+        d for d in odds_data if d["Букмекер"] == param_state["reference_bookmaker"]
+    ]
+
+    # filter the dictionaries where "Bookmaker" is not equal to "mybk"
+    other_bk_odds = [
+        d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
+    ]
+
+    other_bk_odds = sorted(other_bk_odds, key=lambda d: d["Букмекер"])
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
@@ -330,6 +366,10 @@ with block:
             with gr.Row():
                 info_data = gr.components.Dataframe(type="pandas")
 
+        with gr.TabItem("Даты"):
+            with gr.Row():
+                dates_data = gr.components.Dataframe(type="pandas")
+
     with gr.Tabs():
         with gr.TabItem("События"):
             with gr.Row():
@@ -347,6 +387,11 @@ with block:
         info_on_select,
         inputs=[fixture_data, fixtures, state],
         outputs=info_data,
+    )
+    fixture_data.select(
+        dates_on_select,
+        inputs=[fixture_data, fixtures, state],
+        outputs=dates_data,
     )
 
     data_run.click(fetch_events, inputs=[state], outputs=[fixtures, fixture_data])

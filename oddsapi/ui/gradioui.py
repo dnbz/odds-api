@@ -364,7 +364,9 @@ with block:
 
         with gr.TabItem("Информация"):
             with gr.Row():
-                info_data = gr.components.Dataframe(type="pandas")
+                info_data = gr.components.Dataframe(
+                    type="pandas", datatype=["str", "markdown", "date"]
+                )
 
         with gr.TabItem("Даты"):
             with gr.Row():

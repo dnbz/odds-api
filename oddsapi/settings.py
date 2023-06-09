@@ -51,7 +51,8 @@ REDIS_PORT = os.environ.get("REDIS_PORT")
 
 HTTPX_PROXY = os.environ.get("HTTPX_PROXY")
 
-DATABASE_CONNECTION = os.environ.get(
-    "DATABASE_CONNECTION",
-    default="postgresql://postgres:mypassword@localhost:5432/oddsapi",
-)
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", default="mypassword")
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", default="localhost")
+POSTGRES_PORT = os.environ.get("POSTGRES_PORT", default=5432)
+
+DATABASE_CONNECTION = f"postgresql+psycopg_async://postgres:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/oddsapi"

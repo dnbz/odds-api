@@ -4,6 +4,7 @@
 .env
 
 logs/*.log
+*.log*
 
 *.session
 *.session-journal

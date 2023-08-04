@@ -47,9 +47,10 @@ async def upsert_fixture(data: dict, session: AsyncSession):
         if league:
             fixture.league = league
         else:
-            logging.warning(
-                f"No league with id {league_data['id']} found for fixture {dict(fixture)}"
+            logging.error(
+                f"No league with id {league_data['id']} found for fixture {fixture.__dict__}"
             )
+            return
 
     session.add(fixture)
 

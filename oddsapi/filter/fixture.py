@@ -1,9 +1,26 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from sqlalchemy import select, or_
+import sqlalchemy
+from sqlalchemy import (
+    select,
+    or_,
+    and_,
+    true,
+    case,
+    literal_column,
+    union_all,
+    literal,
+    not_,
+    lateral,
+    cast,
+    type_coerce,
+    join,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, with_expression
+from sqlalchemy.orm import joinedload, with_expression, aliased
 from sqlalchemy.sql.functions import func, now
 
 from oddsapi.database.models import Bet, Fixture
@@ -98,7 +115,7 @@ def _get_select_filtered_fixtures(
         odds_clause = getattr(cte_avg.c, f"median_{column}") < params.max_odds
 
         # Bet should be both within the odds limit and above the deviation threshold
-        clause = odds_clause & deviation_clause # noqa
+        clause = odds_clause & deviation_clause  # noqa
 
         if params.all_bets_must_match:
             clause = func.bool_and(clause)
@@ -112,7 +129,9 @@ def _get_select_filtered_fixtures(
     )
 
     if params.all_bets_must_match:
-        condition_stmt = condition_stmt.where(Bet.bookmaker != params.reference_bookmaker)
+        condition_stmt = condition_stmt.where(
+            Bet.bookmaker != params.reference_bookmaker
+        )
         condition_stmt = condition_stmt.group_by(Bet.fixture_id)
 
     for bet_filter in bet_filters:
@@ -152,11 +171,221 @@ def _get_select_filtered_fixtures(
     return stmt
 
 
+def _get_select_filtered_fixtures_jsonb(
+    params: FixtureQueryParams,
+):
+    # also meh, type coercion is needed to get the jsonb_array_elements to work
+    totals_elem = type_coerce(
+        func.jsonb_array_elements(Bet.totals).column_valued("totals_elem"), JSONB
+    )
+
+    totals_table = lateral(
+        func.jsonb_array_elements(Bet.totals).table_valued("totals_elem")
+    ).alias("totals_elem")
+
+    totals_reference = (
+        select(
+            Bet.fixture_id,
+            totals_elem["total"].astext.cast(sqlalchemy.Numeric).label("total"),
+            totals_elem["total_over"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("total_over"),
+            totals_elem["total_under"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("total_under"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("totals_reference")
+
+    outcomes_reference = (
+        select(
+            Bet.fixture_id,
+            Bet.outcomes["home_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("home_team"),
+            Bet.outcomes["draw"].astext.cast(sqlalchemy.Numeric).label("draw"),
+            Bet.outcomes["away_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("away_team"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("outcomes_reference")
+
+    # sqlalchemy is bad
+    totals_elem_literal = literal_column("totals_elem", type_=JSONB)
+    totals_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    ~totals_elem_literal["total_over"]
+                    .astext.cast(sqlalchemy.Numeric)
+                    .between(
+                        (1 - params.percent_deviation_threshold)
+                        * totals_reference.c.total_over,
+                        (1 + params.percent_deviation_threshold)
+                        * totals_reference.c.total_over,
+                    ),
+                    sqlalchemy.literal("totals over ")
+                    + totals_elem_literal["total"].astext,
+                ),
+                (
+                    ~totals_elem_literal["total_under"]
+                    .astext.cast(sqlalchemy.Numeric)
+                    .between(
+                        (1 - params.percent_deviation_threshold)
+                        * totals_reference.c.total_under,
+                        (1 + params.percent_deviation_threshold)
+                        * totals_reference.c.total_under,
+                    ),
+                    sqlalchemy.literal("totals under ")
+                    + totals_elem_literal["total"].astext,
+                ),
+            ).label("trigger"),
+        )
+        .join_from(Bet, totals_table, text("true"))
+        .join(
+            totals_reference,
+            (Bet.fixture_id == totals_reference.c.fixture_id)
+            & (
+                totals_elem_literal["total"].astext.cast(sqlalchemy.Numeric)
+                == totals_reference.c.total
+            ),
+        )
+        .where(
+            ~totals_elem_literal["total_over"]
+            .astext.cast(sqlalchemy.Numeric)
+            .between(
+                (1 - params.percent_deviation_threshold)
+                * totals_reference.c.total_over,
+                (1 + params.percent_deviation_threshold)
+                * totals_reference.c.total_over,
+            )
+            | ~totals_elem_literal["total_under"]
+            .astext.cast(sqlalchemy.Numeric)
+            .between(
+                (1 - params.percent_deviation_threshold)
+                * totals_reference.c.total_under,
+                (1 + params.percent_deviation_threshold)
+                * totals_reference.c.total_under,
+            )
+        )
+    ).cte("totals_comparison")
+
+    outcomes_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    ~Bet.outcomes["home_team"]
+                    .astext.cast(sqlalchemy.Numeric)
+                    .between(
+                        (1 - params.percent_deviation_threshold)
+                        * outcomes_reference.c.home_team,
+                        (1 + params.percent_deviation_threshold)
+                        * outcomes_reference.c.home_team,
+                    ),
+                    sqlalchemy.literal("outcomes home_team"),
+                ),
+                (
+                    ~Bet.outcomes["draw"]
+                    .astext.cast(sqlalchemy.Numeric)
+                    .between(
+                        (1 - params.percent_deviation_threshold)
+                        * outcomes_reference.c.draw,
+                        (1 + params.percent_deviation_threshold)
+                        * outcomes_reference.c.draw,
+                    ),
+                    sqlalchemy.literal("outcomes draw"),
+                ),
+                (
+                    ~Bet.outcomes["away_team"]
+                    .astext.cast(sqlalchemy.Numeric)
+                    .between(
+                        (1 - params.percent_deviation_threshold)
+                        * outcomes_reference.c.away_team,
+                        (1 + params.percent_deviation_threshold)
+                        * outcomes_reference.c.away_team,
+                    ),
+                    sqlalchemy.literal("outcomes away_team"),
+                ),
+            ).label("trigger"),
+        )
+        .join(
+            outcomes_reference,
+            Bet.fixture_id == outcomes_reference.c.fixture_id,
+        )
+        .where(
+            ~Bet.outcomes["home_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .between(
+                (1 - params.percent_deviation_threshold)
+                * outcomes_reference.c.home_team,
+                (1 + params.percent_deviation_threshold)
+                * outcomes_reference.c.home_team,
+            )
+            | ~Bet.outcomes["draw"]
+            .astext.cast(sqlalchemy.Numeric)
+            .between(
+                (1 - params.percent_deviation_threshold) * outcomes_reference.c.draw,
+                (1 + params.percent_deviation_threshold) * outcomes_reference.c.draw,
+            )
+            | ~Bet.outcomes["away_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .between(
+                (1 - params.percent_deviation_threshold)
+                * outcomes_reference.c.away_team,
+                (1 + params.percent_deviation_threshold)
+                * outcomes_reference.c.away_team,
+            )
+        )
+    ).cte("outcomes_comparison")
+
+    combined_triggers = (
+        select(totals_comparison.c.fixture_id, totals_comparison.c.trigger)
+        .where(totals_comparison.c.trigger != None)
+        .union_all(
+            select(
+                outcomes_comparison.c.fixture_id, outcomes_comparison.c.trigger
+            ).where(outcomes_comparison.c.trigger != None)
+        )
+    ).cte("combined_triggers")
+
+    final_cte = (
+        select(
+            Fixture,
+            sqlalchemy.func.string_agg(combined_triggers.c.trigger, ", ").label(
+                "trigger"
+            ),
+        )
+        .group_by(Fixture.id)
+        .join(
+            combined_triggers,
+            Fixture.id == combined_triggers.c.fixture_id,
+        )
+    ).cte("final_cte")
+
+    stmt = select(Fixture).join(final_cte, Fixture.id == final_cte.c.id)
+
+    # dynamically load the columns that represent which condition has been met
+    expression = with_expression(
+        getattr(Fixture, f"trigger"),
+        getattr(final_cte.c, f"trigger"),
+    )
+
+    stmt = stmt.options(expression)
+
+    # stmt = stmt.options(expression)
+    print(stmt.compile(compile_kwargs={"literal_binds": True}))
+
+    return stmt
+
+
 async def find_filtered_fixtures(
     session: AsyncSession,
     params: FixtureQueryParams,
 ) -> list[Fixture] | None:
-    stmt = _get_select_filtered_fixtures(params)
+    stmt = _get_select_filtered_fixtures_jsonb(params)
+    print(stmt.compile(compile_kwargs={"literal_binds": True}))
+    print("\n\n\n")
 
     stmt = stmt.options(
         joinedload(Fixture.bets),
@@ -171,7 +400,7 @@ async def find_filtered_fixtures(
 
 async def find_unnotified_fixtures(session: AsyncSession) -> list[Fixture] | None:
     stmt = (
-        _get_select_filtered_fixtures(FixtureQueryParams())
+        _get_select_filtered_fixtures_jsonb(FixtureQueryParams())
         .where(~Fixture.notifications.any())
         .options(joinedload(Fixture.bets), joinedload(Fixture.notifications))
     )

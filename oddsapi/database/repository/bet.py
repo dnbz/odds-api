@@ -9,8 +9,59 @@ from oddsapi.database.data_models import (
     FonbetEvent,
     MarathonEvent,
     PinnacleEvent,
+    CommonEvent,
 )
 from oddsapi.database.models import Bet, Fixture
+
+
+async def upsert_bet(
+    event: CommonEvent, fixture: Fixture, bookmaker: str, session: AsyncSession
+):
+    bet = None
+    update = False
+    for fixture_bet in fixture.bets:
+        if fixture_bet.bookmaker == "betcity":
+            logging.info(
+                f"This bet is already in db for fixture with id {fixture.id}. Updating..."
+            )
+            update = True
+            bet = fixture_bet
+
+    five_min_ago = datetime.now() - timedelta(minutes=5)
+
+    if not bet:
+        update = False
+        bet = Bet()
+        bet.fixture = fixture
+        bet.bookmaker = bookmaker
+        bet.source = "parser"
+        # bet.source_update = datetime
+        bet.event_url = event.event_url
+
+        logging.info(f"Adding bet from betcity for fixture with id {fixture.id}...")
+
+    # bet.home_win = event.home_team
+    # bet.draw = event.draw
+    # bet.away_win = event.away_team
+
+    print(event.total_odds)
+    bet.outcomes = event.outcome_odds
+
+    # only if it isn't an empty
+    if event.total_odds:
+        bet.totals = event.total_odds
+    # only if it isn't an empty
+    if event.first_half_outcome_odds:
+        bet.first_half_outcomes = event.first_half_outcome_odds
+    # bet.handicaps = event.handicap_odds
+
+    session.add(bet)
+    logging.log(
+        5, f"imported bet for betcity with fixture id {fixture.id} successfully"
+    )
+
+    return update
+    pass
 
 
 async def upsert_apifootball_bet(
@@ -170,7 +221,7 @@ async def get_bet_bookmakers(session: AsyncSession) -> list | None:
         .order_by(func.count().desc())
     )
     bookmakers = (await session.execute(stmt)).all()
-    return bookmakers # noqa
+    return bookmakers  # noqa
 
 
 async def upsert_pinnacle_bet(

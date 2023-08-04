@@ -10,7 +10,10 @@ from sqlalchemy import (
     Text,
     Boolean,
     func,
+    Index,
 )
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship, query_expression
 
 from oddsapi.database.init import Base
@@ -43,17 +46,31 @@ class Bet(Base):
     home_win: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
     away_win: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
     draw: Mapped[float] = mapped_column(Numeric(12, 6), index=True, nullable=True)
-    total_under25: Mapped[float] = mapped_column(
-        Numeric(12, 6), index=True, nullable=True
-    )
-    total_over25: Mapped[float] = mapped_column(
-        Numeric(12, 6), index=True, nullable=True
-    )
 
     fixture_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("fixture.id"), index=True
     )
     fixture: Mapped["Fixture"] = relationship("Fixture", back_populates="bets")
+
+    outcomes: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSONB), nullable=True)
+    first_half_outcomes: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(JSONB), nullable=True
+    )
+    # jsonb with gin index
+    totals: Mapped[dict] = mapped_column(MutableList.as_mutable(JSONB), nullable=True)
+
+    handicaps: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(JSONB), nullable=True
+    )
+
+    __table_args__ = (
+        Index("idx_gin_totals", totals, postgresql_using="gin"),
+        Index("idx_gin_handicaps", handicaps, postgresql_using="gin"),
+        Index("idx_gin_outcomes", outcomes, postgresql_using="gin"),
+        Index(
+            "idx_gin_first_half_outcomes", first_half_outcomes, postgresql_using="gin"
+        ),
+    )
 
 
 class Bookmaker(Base):
@@ -162,6 +179,7 @@ class Fixture(Base):
     )
 
     # conditions which indicate which odds have been matched to a fixture
+    trigger: Mapped[str] = query_expression()
     condition_away_win: Mapped[bool] = query_expression()
     condition_home_win: Mapped[bool] = query_expression()
     condition_draw: Mapped[bool] = query_expression()

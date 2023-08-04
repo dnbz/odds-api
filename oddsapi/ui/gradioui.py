@@ -76,13 +76,13 @@ def fetch_events(
 
     for fixture in fxs:
         # conditions that were met to match this fixture
-        match_conditions = []
-        # iterate over dict keys and values
-        for key, value in fixture.get_conditions().items():
-            if value is True:
-                match_conditions.append(key)
-
-        match_condition = ", ".join(match_conditions)
+        # match_conditions = []
+        # # iterate over dict keys and values
+        # for key, value in fixture.get_conditions().items():
+        #     if value is True:
+        #         match_conditions.append(key)
+        #
+        # match_condition = ", ".join(match_conditions)
 
         event_data.append(
             {
@@ -91,7 +91,7 @@ def fetch_events(
                 "Гости": fixture.away_team_name,
                 "Дата": fixture.date,
                 "Лига": fixture.league.name,
-                "Условие": match_condition,
+                "Условие": fixture.trigger,
             }
         )
 
@@ -100,7 +100,7 @@ def fetch_events(
 
 
 # display the odds for a given fixture on select
-def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: dict):
+def result_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: dict):
     row_id = evt.index[0]
     fixture_id = df.iloc[row_id]["Id"]
 
@@ -113,9 +113,9 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
     odds_data = [
         {
             "Букмекер": bet.bookmaker,
-            "Победа хозяев": bet.home_win,
-            "Ничья": bet.draw,
-            "Победа гостей": bet.away_win,
+            "Победа хозяев": bet.outcomes.get("home_team"),
+            "Ничья": bet.outcomes.get("draw"),
+            "Победа гостей": bet.outcomes.get("away_team"),
         }
         for bet in fixture.bets
     ]
@@ -133,6 +133,102 @@ def event_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: d
 
     # create a dataframe from the filtered dictionaries
     df = pd.DataFrame(reference_bk_odds + other_bk_odds)
+
+    return df
+
+
+def first_half_result_on_select(
+    evt: gr.SelectData, df: DataFrame, fxs: list, param_state: dict
+):
+    row_id = evt.index[0]
+    fixture_id = df.iloc[row_id]["Id"]
+
+    fixture = next((f for f in fxs if f.id == fixture_id), None)
+
+    if fixture is None:
+        return None
+
+    # create a dataframe with the odds for the selected fixture
+    odds_data = [
+        {
+            "Букмекер": bet.bookmaker,
+            "Победа хозяев": bet.first_half_outcomes.get("home_team"),
+            "Ничья": bet.first_half_outcomes.get("draw"),
+            "Победа гостей": bet.first_half_outcomes.get("away_team"),
+        }
+        for bet in fixture.bets
+    ]
+    # filter the dictionaries where "Букмекер"
+    reference_bk_odds = [
+        d for d in odds_data if d["Букмекер"] == param_state["reference_bookmaker"]
+    ]
+
+    # filter the dictionaries where "Bookmaker" is not equal to "mybk"
+    other_bk_odds = [
+        d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
+    ]
+
+    other_bk_odds = sorted(other_bk_odds, key=lambda d: d["Букмекер"])
+
+    # create a dataframe from the filtered dictionaries
+    df = pd.DataFrame(reference_bk_odds + other_bk_odds)
+
+    return df
+
+
+def totals_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: dict):
+    row_id = evt.index[0]
+    fixture_id = df.iloc[row_id]["Id"]
+
+    fixture = next((f for f in fxs if f.id == fixture_id), None)
+
+    if fixture is None:
+        return None
+
+    # create a dataframe with the odds for the selected fixture
+    odds_data = pd.DataFrame()
+    for bet in fixture.bets:
+        df = pd.DataFrame(bet.totals)
+
+        # convert to float
+        df = df.astype(float)
+
+        # sort by 'Total Value'
+        df = df.sort_values("total")
+
+        # add a new column 'bet_id'
+        df = df.assign(bookmaker=bet.bookmaker)
+
+        odds_data = pd.concat([odds_data, df])
+
+    # Sort the DataFrame by 'total'
+    odds_data = odds_data.sort_values(by=["total", "bookmaker"])
+
+    # rename the columns
+    odds_data = odds_data.rename(
+        columns={
+            "total": "Тотал",
+            "total_over": "Больше",
+            "total_under": "Меньше",
+            "bookmaker": "Букмекер",
+        }
+    )
+
+    # # filter the dictionaries where "Букмекер"
+    # reference_bk_odds = [
+    #     d for d in odds_data if d["Букмекер"] == param_state["reference_bookmaker"]
+    # ]
+    #
+    # # filter the dictionaries where "Bookmaker" is not equal to "mybk"
+    # other_bk_odds = [
+    #     d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
+    # ]
+    #
+    # other_bk_odds = sorted(other_bk_odds, key=lambda d: d["Букмекер"])
+    #
+    # # create a dataframe from the filtered dictionaries
+    # df = pd.DataFrame(reference_bk_odds + other_bk_odds)
+    df = odds_data
 
     return df
 
@@ -259,7 +355,7 @@ def update_all_bets_must_match(val: bool, s: State):
 
 
 def update_percent_deviation(val: int, s: State):
-    s["percent_deviation"] = val
+    s["percent_deviation"] = val / 100
     return s
 
 
@@ -286,8 +382,6 @@ with block:
     fixtures = gr.State(value=[])
 
     state = gr.State(value=get_default_state())
-
-    gr.Markdown("""Bet""")
 
     with gr.Row():
         bk_dropdown = gr.Dropdown(
@@ -358,9 +452,15 @@ with block:
     )
 
     with gr.Tabs():
-        with gr.TabItem("Кэфы"):
+        with gr.TabItem("Исходы"):
             with gr.Row():
-                detail_data = gr.components.Dataframe(type="pandas")
+                result_data = gr.components.Dataframe(type="pandas", label="Матч", show_label=True)
+            with gr.Row():
+                first_half_result_data = gr.components.Dataframe(type="pandas", label="Первая половина", show_label=True)
+
+        with gr.TabItem("Тоталы"):
+            with gr.Row():
+                totals_data = gr.components.Dataframe(type="pandas")
 
         with gr.TabItem("Информация"):
             with gr.Row():
@@ -381,9 +481,19 @@ with block:
 
     # event listeners
     fixture_data.select(
-        event_on_select,
+        result_on_select,
         inputs=[fixture_data, fixtures, state],
-        outputs=detail_data,
+        outputs=result_data,
+    )
+    fixture_data.select(
+        first_half_result_on_select,
+        inputs=[fixture_data, fixtures, state],
+        outputs=first_half_result_data,
+    )
+    fixture_data.select(
+        totals_on_select,
+        inputs=[fixture_data, fixtures, state],
+        outputs=totals_data,
     )
     fixture_data.select(
         info_on_select,

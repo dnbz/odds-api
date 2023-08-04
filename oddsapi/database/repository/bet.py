@@ -22,7 +22,7 @@ async def upsert_bet(
     for fixture_bet in fixture.bets:
         if fixture_bet.bookmaker == bookmaker:
             logging.info(
-                f"This bet is already in db for fixture with id {fixture.id}. Updating..."
+                f"This {bookmaker} bet is already in db for fixture with id {fixture.id}. Updating..."
             )
             update = True
             bet = fixture_bet

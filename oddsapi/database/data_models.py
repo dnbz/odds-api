@@ -52,7 +52,7 @@ class FonbetEvent:
     total_odds: list[TotalOdds] | None
     first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
-    name: str
+    name: Optional[str] = None
 
 
 @dataclass(slots=False)
@@ -65,7 +65,7 @@ class PinnacleEvent:
     total_odds: list | None
     first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
-    name: str
+    name: Optional[str] = None
 
 
 @dataclass(slots=False)
@@ -78,4 +78,4 @@ class MarathonEvent:
     total_odds: list | None
     first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
-    name: str
+    name: Optional[str] = None

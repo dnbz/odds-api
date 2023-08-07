@@ -213,24 +213,7 @@ def totals_on_select(evt: gr.SelectData, df: DataFrame, fxs: list, param_state: 
             "bookmaker": "Букмекер",
         }
     )
-
-    # # filter the dictionaries where "Букмекер"
-    # reference_bk_odds = [
-    #     d for d in odds_data if d["Букмекер"] == param_state["reference_bookmaker"]
-    # ]
-    #
-    # # filter the dictionaries where "Bookmaker" is not equal to "mybk"
-    # other_bk_odds = [
-    #     d for d in odds_data if d["Букмекер"] != param_state["reference_bookmaker"]
-    # ]
-    #
-    # other_bk_odds = sorted(other_bk_odds, key=lambda d: d["Букмекер"])
-    #
-    # # create a dataframe from the filtered dictionaries
-    # df = pd.DataFrame(reference_bk_odds + other_bk_odds)
-    df = odds_data
-
-    return df
+    return odds_data
 
 
 # display the info for a given fixture on select
@@ -454,9 +437,13 @@ with block:
     with gr.Tabs():
         with gr.TabItem("Исходы"):
             with gr.Row():
-                result_data = gr.components.Dataframe(type="pandas", label="Матч", show_label=True)
+                result_data = gr.components.Dataframe(
+                    type="pandas", label="Матч", show_label=True
+                )
             with gr.Row():
-                first_half_result_data = gr.components.Dataframe(type="pandas", label="Первая половина", show_label=True)
+                first_half_result_data = gr.components.Dataframe(
+                    type="pandas", label="Первая половина", show_label=True
+                )
 
         with gr.TabItem("Тоталы"):
             with gr.Row():
@@ -472,12 +459,11 @@ with block:
             with gr.Row():
                 dates_data = gr.components.Dataframe(type="pandas")
 
+    data_run = gr.Button("Refresh")
     with gr.Tabs():
         with gr.TabItem("События"):
             with gr.Row():
                 fixture_data = gr.components.Dataframe(type="pandas", interactive=False)
-
-            data_run = gr.Button("Refresh")
 
     # event listeners
     fixture_data.select(

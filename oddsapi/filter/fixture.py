@@ -61,114 +61,143 @@ class FixtureQueryParams:
     league_ids: list[int] | None = None
 
 
-def _get_select_filtered_fixtures(
+# def _get_select_filtered_fixtures(
+#     params: FixtureQueryParams,
+# ):
+#     """Finds all fixtures that match the deviation criteria. Returns a SQLAlchemy Select object"""
+#     filtering_columns = [Bet.away_win, Bet.home_win, Bet.draw]
+#     col_names = [col.name for col in filtering_columns]
+#
+#     avg_columns = []
+#     for column in col_names:
+#         clause = getattr(Bet, column).label(f"median_{column}")
+#
+#         avg_columns.append(clause)
+#
+#     cte_avg = (
+#         select(
+#             *avg_columns,
+#             Bet.fixture_id,
+#         )
+#         .join(Bet.fixture)
+#         .where((Fixture.date > now()) & (Bet.bookmaker == params.reference_bookmaker))
+#         # .group_by(Bet.fixture_id)
+#         .cte("cte_avg")
+#     )
+#
+#     bet_filters = []
+#     for column in col_names:
+#         avg_col = getattr(cte_avg.c, f"median_{column}")
+#         fixture_col = getattr(Bet, column)
+#
+#         if params.deviation_strategy == DeviationStrategy.PERCENT.value:
+#             deviation = (avg_col / 100) * params.percent_deviation_threshold
+#             if params.deviation_direction == DeviationDirection.BOTH.value:
+#                 deviation_clause = (
+#                     func.abs(fixture_col - avg_col)
+#                     > (avg_col / 100) * params.percent_deviation_threshold
+#                 )
+#             elif params.deviation_direction == DeviationDirection.HIGHER.value:
+#                 deviation_clause = (fixture_col - avg_col) > deviation
+#             elif params.deviation_direction == DeviationDirection.LOWER.value:
+#                 deviation_clause = (avg_col - fixture_col) > deviation
+#         else:
+#             # absolute deviation
+#             deviation = params.absolute_deviation_threshold
+#             if params.deviation_direction == DeviationDirection.BOTH.value:
+#                 deviation_clause = func.abs(fixture_col - avg_col) > deviation
+#             elif params.deviation_direction == DeviationDirection.HIGHER.value:
+#                 deviation_clause = (fixture_col - avg_col) > deviation
+#             elif params.deviation_direction == DeviationDirection.LOWER.value:
+#                 deviation_clause = (avg_col - fixture_col) > deviation
+#
+#         # odds_clause = getattr(Bet, column) < params.max_odds
+#         odds_clause = getattr(cte_avg.c, f"median_{column}") < params.max_odds
+#
+#         # Bet should be both within the odds limit and above the deviation threshold
+#         clause = odds_clause & deviation_clause  # noqa
+#
+#         if params.all_bets_must_match:
+#             clause = func.bool_and(clause)
+#
+#         clause = clause.label(f"condition_{column}")
+#
+#         bet_filters.append(clause)
+#
+#     condition_stmt = select(Bet.fixture_id).join(
+#         cte_avg, cte_avg.c.fixture_id == Bet.fixture_id
+#     )
+#
+#     if params.all_bets_must_match:
+#         condition_stmt = condition_stmt.where(
+#             Bet.bookmaker != params.reference_bookmaker
+#         )
+#         condition_stmt = condition_stmt.group_by(Bet.fixture_id)
+#
+#     for bet_filter in bet_filters:
+#         condition_stmt = condition_stmt.add_columns(bet_filter)
+#
+#     cte_condition = condition_stmt.cte("cte_condition")
+#
+#     condition_columns = [
+#         # label is used to prevent usage of joined cte prefix
+#         getattr(cte_condition.c, f"condition_{col}").label(f"condition_{col}")
+#         for col in col_names
+#     ]
+#
+#     stmt = (
+#         select(Fixture)
+#         .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
+#         .where(or_(*condition_columns))
+#     )
+#
+#     # dynamically load the columns that represent which condition has been met
+#     expression = [
+#         with_expression(
+#             getattr(Fixture, f"condition_{col}"),
+#             getattr(cte_condition.c, f"condition_{col}"),
+#         )
+#         for col in col_names
+#     ]
+#     stmt = stmt.options(*expression)
+#
+#     stmt = stmt.where(Fixture.bets.any(Bet.bookmaker == params.reference_bookmaker))
+#
+#     if params.league_ids:
+#         stmt = stmt.where(Fixture.league_id.in_(params.league_ids))
+#
+#     # print(stmt.compile(compile_kwargs={"literal_binds": True}))
+#
+#     return stmt
+
+
+def get_comparison_clause(
     params: FixtureQueryParams,
+    reference_col: sqlalchemy.Column,
+    compared_col: sqlalchemy.Column,
 ):
-    """Finds all fixtures that match the deviation criteria. Returns a SQLAlchemy Select object"""
-    filtering_columns = [Bet.away_win, Bet.home_win, Bet.draw]
-    col_names = [col.name for col in filtering_columns]
+    if params.deviation_strategy == DeviationStrategy.PERCENT.value:
+        deviation = reference_col * params.percent_deviation_threshold
+        if params.deviation_direction == DeviationDirection.BOTH.value:
+            deviation_clause = (
+                func.abs(compared_col - reference_col)
+                > reference_col * params.percent_deviation_threshold
+            )
+        elif params.deviation_direction == DeviationDirection.HIGHER.value:
+            deviation_clause = (compared_col - reference_col) > deviation
+        elif params.deviation_direction == DeviationDirection.LOWER.value:
+            deviation_clause = (reference_col - compared_col) > deviation
+    else:
+        # absolute deviation
+        deviation = params.absolute_deviation_threshold
+        if params.deviation_direction == DeviationDirection.BOTH.value:
+            deviation_clause = func.abs(compared_col - reference_col) > deviation
+        elif params.deviation_direction == DeviationDirection.HIGHER.value:
+            deviation_clause = (compared_col - reference_col) > deviation
+        elif params.deviation_direction == DeviationDirection.LOWER.value:
+            deviation_clause = (reference_col - compared_col) > deviation
 
-    avg_columns = []
-    for column in col_names:
-        clause = getattr(Bet, column).label(f"median_{column}")
-
-        avg_columns.append(clause)
-
-    cte_avg = (
-        select(
-            *avg_columns,
-            Bet.fixture_id,
-        )
-        .join(Bet.fixture)
-        .where((Fixture.date > now()) & (Bet.bookmaker == params.reference_bookmaker))
-        # .group_by(Bet.fixture_id)
-        .cte("cte_avg")
-    )
-
-    bet_filters = []
-    for column in col_names:
-        avg_col = getattr(cte_avg.c, f"median_{column}")
-        fixture_col = getattr(Bet, column)
-
-        if params.deviation_strategy == DeviationStrategy.PERCENT.value:
-            deviation = (avg_col / 100) * params.percent_deviation_threshold
-            if params.deviation_direction == DeviationDirection.BOTH.value:
-                deviation_clause = (
-                    func.abs(fixture_col - avg_col)
-                    > (avg_col / 100) * params.percent_deviation_threshold
-                )
-            elif params.deviation_direction == DeviationDirection.HIGHER.value:
-                deviation_clause = (fixture_col - avg_col) > deviation
-            elif params.deviation_direction == DeviationDirection.LOWER.value:
-                deviation_clause = (avg_col - fixture_col) > deviation
-        else:
-            # absolute deviation
-            deviation = params.absolute_deviation_threshold
-            if params.deviation_direction == DeviationDirection.BOTH.value:
-                deviation_clause = func.abs(fixture_col - avg_col) > deviation
-            elif params.deviation_direction == DeviationDirection.HIGHER.value:
-                deviation_clause = (fixture_col - avg_col) > deviation
-            elif params.deviation_direction == DeviationDirection.LOWER.value:
-                deviation_clause = (avg_col - fixture_col) > deviation
-
-        # odds_clause = getattr(Bet, column) < params.max_odds
-        odds_clause = getattr(cte_avg.c, f"median_{column}") < params.max_odds
-
-        # Bet should be both within the odds limit and above the deviation threshold
-        clause = odds_clause & deviation_clause  # noqa
-
-        if params.all_bets_must_match:
-            clause = func.bool_and(clause)
-
-        clause = clause.label(f"condition_{column}")
-
-        bet_filters.append(clause)
-
-    condition_stmt = select(Bet.fixture_id).join(
-        cte_avg, cte_avg.c.fixture_id == Bet.fixture_id
-    )
-
-    if params.all_bets_must_match:
-        condition_stmt = condition_stmt.where(
-            Bet.bookmaker != params.reference_bookmaker
-        )
-        condition_stmt = condition_stmt.group_by(Bet.fixture_id)
-
-    for bet_filter in bet_filters:
-        condition_stmt = condition_stmt.add_columns(bet_filter)
-
-    cte_condition = condition_stmt.cte("cte_condition")
-
-    condition_columns = [
-        # label is used to prevent usage of joined cte prefix
-        getattr(cte_condition.c, f"condition_{col}").label(f"condition_{col}")
-        for col in col_names
-    ]
-
-    stmt = (
-        select(Fixture)
-        .join(cte_condition, cte_condition.c.fixture_id == Fixture.id)
-        .where(or_(*condition_columns))
-    )
-
-    # dynamically load the columns that represent which condition has been met
-    expression = [
-        with_expression(
-            getattr(Fixture, f"condition_{col}"),
-            getattr(cte_condition.c, f"condition_{col}"),
-        )
-        for col in col_names
-    ]
-    stmt = stmt.options(*expression)
-
-    stmt = stmt.where(Fixture.bets.any(Bet.bookmaker == params.reference_bookmaker))
-
-    if params.league_ids:
-        stmt = stmt.where(Fixture.league_id.in_(params.league_ids))
-
-    # print(stmt.compile(compile_kwargs={"literal_binds": True}))
-
-    return stmt
+    return deviation_clause
 
 
 def _get_select_filtered_fixtures_jsonb(
@@ -216,25 +245,23 @@ def _get_select_filtered_fixtures_jsonb(
             Bet.fixture_id,
             sqlalchemy.case(
                 (
-                    ~totals_elem_literal["total_over"]
-                    .astext.cast(sqlalchemy.Numeric)
-                    .between(
-                        (1 - params.percent_deviation_threshold)
-                        * totals_reference.c.total_over,
-                        (1 + params.percent_deviation_threshold)
-                        * totals_reference.c.total_over,
+                    get_comparison_clause(
+                        params,
+                        totals_reference.c.total_over,
+                        totals_elem_literal["total_over"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
                     ),
                     sqlalchemy.literal("totals over ")
                     + totals_elem_literal["total"].astext,
                 ),
                 (
-                    ~totals_elem_literal["total_under"]
-                    .astext.cast(sqlalchemy.Numeric)
-                    .between(
-                        (1 - params.percent_deviation_threshold)
-                        * totals_reference.c.total_under,
-                        (1 + params.percent_deviation_threshold)
-                        * totals_reference.c.total_under,
+                    get_comparison_clause(
+                        params,
+                        totals_reference.c.total_under,
+                        totals_elem_literal["total_under"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
                     ),
                     sqlalchemy.literal("totals under ")
                     + totals_elem_literal["total"].astext,
@@ -251,59 +278,67 @@ def _get_select_filtered_fixtures_jsonb(
             ),
         )
         .where(
-            ~totals_elem_literal["total_over"]
-            .astext.cast(sqlalchemy.Numeric)
-            .between(
-                (1 - params.percent_deviation_threshold)
-                * totals_reference.c.total_over,
-                (1 + params.percent_deviation_threshold)
-                * totals_reference.c.total_over,
+            get_comparison_clause(
+                params,
+                totals_reference.c.total_over,
+                totals_elem_literal["total_over"].astext.cast(sqlalchemy.Numeric),
             )
-            | ~totals_elem_literal["total_under"]
-            .astext.cast(sqlalchemy.Numeric)
-            .between(
-                (1 - params.percent_deviation_threshold)
-                * totals_reference.c.total_under,
-                (1 + params.percent_deviation_threshold)
-                * totals_reference.c.total_under,
+            | get_comparison_clause(
+                params,
+                totals_reference.c.total_under,
+                totals_elem_literal["total_under"].astext.cast(sqlalchemy.Numeric),
             )
         )
     ).cte("totals_comparison")
+
+    outcomes_comparison_condition_clauses = [
+        get_comparison_clause(
+            params,
+            outcomes_reference.c.home_team,
+            Bet.outcomes["home_team"].astext.cast(sqlalchemy.Numeric),
+        ),
+        get_comparison_clause(
+            params,
+            outcomes_reference.c.draw,
+            Bet.outcomes["draw"].astext.cast(sqlalchemy.Numeric),
+        ),
+        get_comparison_clause(
+            params,
+            outcomes_reference.c.away_team,
+            Bet.outcomes["away_team"].astext.cast(sqlalchemy.Numeric),
+        ),
+    ]
+
+    if params.all_bets_must_match:
+        outcomes_comparison_condition = and_(*outcomes_comparison_condition_clauses)
+    else:
+        outcomes_comparison_condition = or_(*outcomes_comparison_condition_clauses)
 
     outcomes_comparison = (
         select(
             Bet.fixture_id,
             sqlalchemy.case(
                 (
-                    ~Bet.outcomes["home_team"]
-                    .astext.cast(sqlalchemy.Numeric)
-                    .between(
-                        (1 - params.percent_deviation_threshold)
-                        * outcomes_reference.c.home_team,
-                        (1 + params.percent_deviation_threshold)
-                        * outcomes_reference.c.home_team,
+                    get_comparison_clause(
+                        params,
+                        outcomes_reference.c.home_team,
+                        Bet.outcomes["home_team"].astext.cast(sqlalchemy.Numeric),
                     ),
                     sqlalchemy.literal("outcomes home_team"),
                 ),
                 (
-                    ~Bet.outcomes["draw"]
-                    .astext.cast(sqlalchemy.Numeric)
-                    .between(
-                        (1 - params.percent_deviation_threshold)
-                        * outcomes_reference.c.draw,
-                        (1 + params.percent_deviation_threshold)
-                        * outcomes_reference.c.draw,
+                    get_comparison_clause(
+                        params,
+                        outcomes_reference.c.draw,
+                        Bet.outcomes["draw"].astext.cast(sqlalchemy.Numeric),
                     ),
                     sqlalchemy.literal("outcomes draw"),
                 ),
                 (
-                    ~Bet.outcomes["away_team"]
-                    .astext.cast(sqlalchemy.Numeric)
-                    .between(
-                        (1 - params.percent_deviation_threshold)
-                        * outcomes_reference.c.away_team,
-                        (1 + params.percent_deviation_threshold)
-                        * outcomes_reference.c.away_team,
+                    get_comparison_clause(
+                        params,
+                        outcomes_reference.c.away_team,
+                        Bet.outcomes["away_team"].astext.cast(sqlalchemy.Numeric),
                     ),
                     sqlalchemy.literal("outcomes away_team"),
                 ),
@@ -314,28 +349,22 @@ def _get_select_filtered_fixtures_jsonb(
             Bet.fixture_id == outcomes_reference.c.fixture_id,
         )
         .where(
-            ~Bet.outcomes["home_team"]
-            .astext.cast(sqlalchemy.Numeric)
-            .between(
-                (1 - params.percent_deviation_threshold)
-                * outcomes_reference.c.home_team,
-                (1 + params.percent_deviation_threshold)
-                * outcomes_reference.c.home_team,
-            )
-            | ~Bet.outcomes["draw"]
-            .astext.cast(sqlalchemy.Numeric)
-            .between(
-                (1 - params.percent_deviation_threshold) * outcomes_reference.c.draw,
-                (1 + params.percent_deviation_threshold) * outcomes_reference.c.draw,
-            )
-            | ~Bet.outcomes["away_team"]
-            .astext.cast(sqlalchemy.Numeric)
-            .between(
-                (1 - params.percent_deviation_threshold)
-                * outcomes_reference.c.away_team,
-                (1 + params.percent_deviation_threshold)
-                * outcomes_reference.c.away_team,
-            )
+            outcomes_comparison_condition
+            # get_comparison_clause(
+            #     params,
+            #     outcomes_reference.c.home_team,
+            #     Bet.outcomes["home_team"].astext.cast(sqlalchemy.Numeric),
+            # )
+            # | get_comparison_clause(
+            #     params,
+            #     outcomes_reference.c.draw,
+            #     Bet.outcomes["draw"].astext.cast(sqlalchemy.Numeric),
+            # )
+            # | get_comparison_clause(
+            #     params,
+            #     outcomes_reference.c.away_team,
+            #     Bet.outcomes["away_team"].astext.cast(sqlalchemy.Numeric),
+            # )
         )
     ).cte("outcomes_comparison")
 
@@ -361,7 +390,12 @@ def _get_select_filtered_fixtures_jsonb(
             combined_triggers,
             Fixture.id == combined_triggers.c.fixture_id,
         )
-    ).cte("final_cte")
+    )
+
+    if params.league_ids:
+        final_cte = final_cte.where(Fixture.league_id.in_(params.league_ids))
+
+    final_cte = final_cte.cte("final_cte")
 
     stmt = select(Fixture).join(final_cte, Fixture.id == final_cte.c.id)
 

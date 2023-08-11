@@ -27,8 +27,6 @@ async def upsert_bet(
             update = True
             bet = fixture_bet
 
-    five_min_ago = datetime.now() - timedelta(minutes=5)
-
     if not bet:
         update = False
         bet = Bet()
@@ -49,7 +47,14 @@ async def upsert_bet(
 
     # only if it isn't an empty
     if event.total_odds:
-        bet.totals = event.total_odds
+        # filter out all the totals where either total_over or total_under are not present
+        # and then map the remaining ones to a list of TotalOdds
+        totals = [
+            total
+            for total in event.total_odds
+            if total.total_over and total.total_under
+        ]
+        bet.totals = totals
     # only if it isn't an empty
     if event.first_half_outcome_odds:
         bet.first_half_outcomes = event.first_half_outcome_odds

@@ -197,6 +197,10 @@ def get_comparison_clause(
         elif params.deviation_direction == DeviationDirection.LOWER.value:
             deviation_clause = (reference_col - compared_col) > deviation
 
+    if params.max_odds:
+        odds_clause = compared_col < params.max_odds
+        deviation_clause = deviation_clause & odds_clause
+
     return deviation_clause
 
 

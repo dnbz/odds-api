@@ -52,7 +52,7 @@ async def upsert_bet(
         totals = [
             total
             for total in event.total_odds
-            if total.total_over and total.total_under
+            if total.get('total_over') and total.get('total_under')
         ]
         bet.totals = totals
     # only if it isn't an empty

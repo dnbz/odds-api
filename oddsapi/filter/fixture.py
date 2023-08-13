@@ -242,6 +242,21 @@ def _get_select_filtered_fixtures_jsonb(
         ).where(Bet.bookmaker == params.reference_bookmaker)
     ).cte("outcomes_reference")
 
+    first_half_outcomes_reference = (
+        select(
+            Bet.fixture_id,
+            Bet.first_half_outcomes["home_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("home_team"),
+            Bet.first_half_outcomes["draw"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("draw"),
+            Bet.first_half_outcomes["away_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("away_team"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("first_half_outcomes_reference")
+
     # sqlalchemy is bad
     totals_elem_literal = literal_column("totals_elem", type_=JSONB)
     totals_comparison = (
@@ -313,10 +328,34 @@ def _get_select_filtered_fixtures_jsonb(
         ),
     ]
 
+    first_half_outcomes_comparison_condition_clauses = [
+        get_comparison_clause(
+            params,
+            first_half_outcomes_reference.c.home_team,
+            Bet.first_half_outcomes["home_team"].astext.cast(sqlalchemy.Numeric),
+        ),
+        get_comparison_clause(
+            params,
+            first_half_outcomes_reference.c.draw,
+            Bet.first_half_outcomes["draw"].astext.cast(sqlalchemy.Numeric),
+        ),
+        get_comparison_clause(
+            params,
+            first_half_outcomes_reference.c.away_team,
+            Bet.first_half_outcomes["away_team"].astext.cast(sqlalchemy.Numeric),
+        ),
+    ]
+
     if params.all_bets_must_match:
         outcomes_comparison_condition = and_(*outcomes_comparison_condition_clauses)
+        first_half_outcomes_comparison_condition = and_(
+            *outcomes_comparison_condition_clauses
+        )
     else:
         outcomes_comparison_condition = or_(*outcomes_comparison_condition_clauses)
+        first_half_outcomes_comparison_condition = or_(
+            *outcomes_comparison_condition_clauses
+        )
 
     outcomes_comparison = (
         select(
@@ -352,33 +391,62 @@ def _get_select_filtered_fixtures_jsonb(
             outcomes_reference,
             Bet.fixture_id == outcomes_reference.c.fixture_id,
         )
-        .where(
-            outcomes_comparison_condition
-            # get_comparison_clause(
-            #     params,
-            #     outcomes_reference.c.home_team,
-            #     Bet.outcomes["home_team"].astext.cast(sqlalchemy.Numeric),
-            # )
-            # | get_comparison_clause(
-            #     params,
-            #     outcomes_reference.c.draw,
-            #     Bet.outcomes["draw"].astext.cast(sqlalchemy.Numeric),
-            # )
-            # | get_comparison_clause(
-            #     params,
-            #     outcomes_reference.c.away_team,
-            #     Bet.outcomes["away_team"].astext.cast(sqlalchemy.Numeric),
-            # )
-        )
+        .where(outcomes_comparison_condition)
     ).cte("outcomes_comparison")
 
+    first_half_outcomes_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    get_comparison_clause(
+                        params,
+                        first_half_outcomes_reference.c.home_team,
+                        Bet.first_half_outcomes["home_team"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("first_half_outcomes home_team"),
+                ),
+                (
+                    get_comparison_clause(
+                        params,
+                        first_half_outcomes_reference.c.draw,
+                        Bet.first_half_outcomes["draw"].astext.cast(sqlalchemy.Numeric),
+                    ),
+                    sqlalchemy.literal("first_half_outcomes draw"),
+                ),
+                (
+                    get_comparison_clause(
+                        params,
+                        first_half_outcomes_reference.c.away_team,
+                        Bet.first_half_outcomes["away_team"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("first_half_outcomes away_team"),
+                ),
+            ).label("trigger"),
+        )
+        .join(
+            first_half_outcomes_reference,
+            (Bet.fixture_id == first_half_outcomes_reference.c.fixture_id)
+            & (Bet.bookmaker != params.reference_bookmaker),
+        )
+        .where(first_half_outcomes_comparison_condition)
+    ).cte("first_half_outcomes_comparison")
+
     combined_triggers = (
-        select(totals_comparison.c.fixture_id, totals_comparison.c.trigger)
-        .where(totals_comparison.c.trigger != None)
-        .union_all(
+        select(outcomes_comparison.c.fixture_id, outcomes_comparison.c.trigger)
+        .where(outcomes_comparison.c.trigger != None) # noqa
+        .union(
             select(
-                outcomes_comparison.c.fixture_id, outcomes_comparison.c.trigger
-            ).where(outcomes_comparison.c.trigger != None)
+                first_half_outcomes_comparison.c.fixture_id,
+                first_half_outcomes_comparison.c.trigger,
+            ).where(first_half_outcomes_comparison.c.trigger != None), # noqa
+            select(totals_comparison.c.fixture_id, totals_comparison.c.trigger).where(
+                totals_comparison.c.trigger != None # noqa
+            ),
         )
     ).cte("combined_triggers")
 

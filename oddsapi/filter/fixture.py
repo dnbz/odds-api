@@ -229,6 +229,24 @@ def _get_select_filtered_fixtures_jsonb(
         ).where(Bet.bookmaker == params.reference_bookmaker)
     ).cte("totals_reference")
 
+    # also meh, type coercion is needed to get the jsonb_array_elements to work
+    handicaps_elem = type_coerce(
+        func.jsonb_array_elements(Bet.handicaps).column_valued("handicaps_elem"), JSONB
+    )
+
+    handicaps_table = lateral(
+        func.jsonb_array_elements(Bet.handicaps).table_valued("handicaps_elem")
+    ).alias("handicaps_elem")
+
+    handicaps_reference = (
+        select(
+            Bet.fixture_id,
+            handicaps_elem["coef"].astext.cast(sqlalchemy.Numeric).label("coef"),
+            handicaps_elem["type"].label("type"),
+            handicaps_elem["handicap"].label("handicap"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("handicaps_reference")
+
     outcomes_reference = (
         select(
             Bet.fixture_id,
@@ -310,6 +328,46 @@ def _get_select_filtered_fixtures_jsonb(
         )
     ).cte("totals_comparison")
 
+    # sqlalchemy is bad
+    handicaps_elem_literal = literal_column("handicaps_elem", type_=JSONB)
+    handicaps_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    get_comparison_clause(
+                        params,
+                        handicaps_reference.c.coef,
+                        handicaps_elem_literal["coef"].astext.cast(sqlalchemy.Numeric),
+                    ),
+                    sqlalchemy.literal("handicaps ")
+                    + handicaps_elem_literal["handicap"].astext
+                    # + handicaps_elem_literal["type"].astext,
+                ),
+            ).label("trigger"),
+        )
+        .join_from(Bet, handicaps_table, text("true"))
+        .join(
+            handicaps_reference,
+            (Bet.fixture_id == handicaps_reference.c.fixture_id)
+            & (
+                handicaps_elem_literal["type"]
+                == handicaps_reference.c.type
+            )
+            & (
+                handicaps_elem_literal["handicap"]
+                == handicaps_reference.c.handicap
+            ),
+        )
+        .where(
+            get_comparison_clause(
+                params,
+                handicaps_reference.c.coef,
+                handicaps_elem_literal["coef"].astext.cast(sqlalchemy.Numeric),
+            )
+        )
+    ).cte("handicaps_comparison")
+
     outcomes_comparison_condition_clauses = [
         get_comparison_clause(
             params,
@@ -349,12 +407,12 @@ def _get_select_filtered_fixtures_jsonb(
     if params.all_bets_must_match:
         outcomes_comparison_condition = and_(*outcomes_comparison_condition_clauses)
         first_half_outcomes_comparison_condition = and_(
-            *outcomes_comparison_condition_clauses
+            *first_half_outcomes_comparison_condition_clauses
         )
     else:
         outcomes_comparison_condition = or_(*outcomes_comparison_condition_clauses)
         first_half_outcomes_comparison_condition = or_(
-            *outcomes_comparison_condition_clauses
+            *first_half_outcomes_comparison_condition_clauses
         )
 
     outcomes_comparison = (
@@ -438,14 +496,21 @@ def _get_select_filtered_fixtures_jsonb(
 
     combined_triggers = (
         select(outcomes_comparison.c.fixture_id, outcomes_comparison.c.trigger)
-        .where(outcomes_comparison.c.trigger != None) # noqa
+        .where(outcomes_comparison.c.trigger != None)  # noqa
         .union(
             select(
                 first_half_outcomes_comparison.c.fixture_id,
                 first_half_outcomes_comparison.c.trigger,
-            ).where(first_half_outcomes_comparison.c.trigger != None), # noqa
+            ).where(
+                first_half_outcomes_comparison.c.trigger != None  # noqa
+            ),
             select(totals_comparison.c.fixture_id, totals_comparison.c.trigger).where(
-                totals_comparison.c.trigger != None # noqa
+                totals_comparison.c.trigger != None  # noqa
+            ),
+            select(
+                handicaps_comparison.c.fixture_id, handicaps_comparison.c.trigger
+            ).where(
+                handicaps_comparison.c.trigger != None  # noqa
             ),
         )
     ).cte("combined_triggers")

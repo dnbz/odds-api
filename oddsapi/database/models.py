@@ -60,7 +60,7 @@ class Bet(Base):
     totals: Mapped[dict] = mapped_column(MutableList.as_mutable(JSONB), nullable=True)
 
     handicaps: Mapped[dict] = mapped_column(
-        MutableDict.as_mutable(JSONB), nullable=True
+        MutableList.as_mutable(JSONB), nullable=True
     )
 
     __table_args__ = (

@@ -14,6 +14,16 @@ from oddsapi.database.data_models import (
 from oddsapi.database.models import Bet, Fixture
 
 
+def normalize_handicaps(handicaps: list[dict]) -> list[dict]:
+    # replace the irregular minus sign
+    for handicap in handicaps:
+        handicap["handicap"] = handicap["handicap"].replace("‑", "-")
+
+        handicap["handicap"] = float(handicap["handicap"])
+
+    return handicaps
+
+
 async def upsert_bet(
     event: CommonEvent, fixture: Fixture, bookmaker: str, session: AsyncSession
 ):
@@ -52,9 +62,12 @@ async def upsert_bet(
         totals = [
             total
             for total in event.total_odds
-            if total.get('total_over') and total.get('total_under')
+            if total.get("total_over") and total.get("total_under")
         ]
         bet.totals = totals
+
+    if event.handicap_odds:
+        bet.handicaps = normalize_handicaps(event.handicap_odds)
     # only if it isn't an empty
     if event.first_half_outcome_odds:
         bet.first_half_outcomes = event.first_half_outcome_odds

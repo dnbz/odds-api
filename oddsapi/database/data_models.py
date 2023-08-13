@@ -10,6 +10,13 @@ class TotalOdds:
 
 
 @dataclass
+class HandicapOdds:
+    handicap: str
+    coef: str
+    type: str
+
+
+@dataclass
 class OutcomeOdds:
     draw: str
     home_win: str

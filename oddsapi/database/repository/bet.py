@@ -71,7 +71,6 @@ async def upsert_bet(
     # only if it isn't an empty
     if event.first_half_outcome_odds:
         bet.first_half_outcomes = event.first_half_outcome_odds
-    # bet.handicaps = event.handicap_odds
 
     session.add(bet)
     logging.log(

@@ -216,6 +216,8 @@ class League(Base):
     type: Mapped[str] = mapped_column(String(255))
     logo: Mapped[str] = mapped_column(String(255))
 
+    country: Mapped[str] = mapped_column(String(255), nullable=True)
+
     seasons: Mapped[list["Season"]] = relationship("Season", back_populates="league")
     fixtures: Mapped[list["Fixture"]] = relationship("Fixture", back_populates="league")
 

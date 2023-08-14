@@ -156,7 +156,8 @@ def first_half_result_on_select(
             "Ничья": bet.first_half_outcomes.get("draw"),
             "Победа гостей": bet.first_half_outcomes.get("away_team"),
         }
-        for bet in fixture.bets if bet.first_half_outcomes
+        for bet in fixture.bets
+        if bet.first_half_outcomes
     ]
 
     if not odds_data:
@@ -264,6 +265,20 @@ def handicaps_on_select(
         }
     )
     return odds_data
+
+
+def event_title_on_select(
+    evt: gr.SelectData, df: DataFrame, fxs: list, param_state: dict
+):
+    row_id = evt.index[0]
+    fixture_id = df.iloc[row_id]["Id"]
+
+    fixture = next((f for f in fxs if f.id == fixture_id), None)
+
+    if fixture is None:
+        return None
+
+    return f"## {fixture.home_team_name} — {fixture.away_team_name}"
 
 
 # display the info for a given fixture on select
@@ -484,6 +499,7 @@ with block:
         label="Ограничение коэффициентов",
     )
 
+    current_event_title = gr.Markdown("## Хозяева — Гости")
     with gr.Tabs():
         with gr.TabItem("Исходы"):
             with gr.Row():
@@ -537,6 +553,11 @@ with block:
         handicaps_on_select,
         inputs=[fixture_data, fixtures, state],
         outputs=handicaps_data,
+    )
+    fixture_data.select(
+        event_title_on_select,
+        inputs=[fixture_data, fixtures, state],
+        outputs=current_event_title,
     )
     fixture_data.select(
         info_on_select,

@@ -89,7 +89,7 @@ def fetch_events(
                 "Id": fixture.id,
                 "Хозяева": fixture.home_team_name,
                 "Гости": fixture.away_team_name,
-                "Дата": fixture.date,
+                "Дата": fixture.date.strftime('%d.%m.%Y %H:%M'),
                 "Лига": fixture.league.name,
                 "Условие": fixture.trigger,
             }

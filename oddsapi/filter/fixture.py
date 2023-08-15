@@ -350,14 +350,8 @@ def _get_select_filtered_fixtures_jsonb(
         .join(
             handicaps_reference,
             (Bet.fixture_id == handicaps_reference.c.fixture_id)
-            & (
-                handicaps_elem_literal["type"]
-                == handicaps_reference.c.type
-            )
-            & (
-                handicaps_elem_literal["handicap"]
-                == handicaps_reference.c.handicap
-            ),
+            & (handicaps_elem_literal["type"] == handicaps_reference.c.type)
+            & (handicaps_elem_literal["handicap"] == handicaps_reference.c.handicap),
         )
         .where(
             get_comparison_clause(
@@ -527,6 +521,7 @@ def _get_select_filtered_fixtures_jsonb(
             combined_triggers,
             Fixture.id == combined_triggers.c.fixture_id,
         )
+        .where(Fixture.date > now())
     )
 
     if params.league_ids:

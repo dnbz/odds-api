@@ -57,6 +57,7 @@ def get_fixtures(param_state: dict):
         deviation_direction=param_state["deviation_direction"],
         all_bets_must_match=param_state["all_bets_must_match"],
         league_ids=selected_league_ids,
+        bet_types=param_state["bet_types"],
     )
 
     async def async_get_data():
@@ -89,7 +90,7 @@ def fetch_events(
                 "Id": fixture.id,
                 "Хозяева": fixture.home_team_name,
                 "Гости": fixture.away_team_name,
-                "Дата": fixture.date.strftime('%d.%m.%Y %H:%M'),
+                "Дата": fixture.date.strftime("%d.%m.%Y %H:%M"),
                 "Лига": fixture.league.name,
                 "Условие": fixture.trigger,
             }
@@ -368,6 +369,7 @@ def get_default_state() -> dict:
         "absolute_deviation": DEFAULT_ABSOLUTE_DEVIATION,
         "all_bets_must_match": True,
         "league_indexes": [],
+        "bet_types": [],
     }
 
     return default_state
@@ -380,6 +382,12 @@ def update_reference_bookmaker(val: str, s: State):
     update = gr.Dropdown.update(choices=get_leagues_str(get_leagues(bk)))
 
     return s, update
+
+
+def update_bet_type(val: list[str], s: State):
+    s["bet_types"] = val
+    print(s)
+    return s
 
 
 def update_league(val: list[int], s: State):
@@ -499,6 +507,14 @@ with block:
         label="Ограничение коэффициентов",
     )
 
+    bet_type_dropdown = gr.Dropdown(
+        ["totals", "outcomes", "handicaps", "first_half_outcomes"],
+        value=None,
+        multiselect=True,
+        interactive=True,
+        label="Типы ставок",
+    )
+
     current_event_title = gr.Markdown("## Хозяева — Гости")
     with gr.Tabs():
         with gr.TabItem("Исходы"):
@@ -576,6 +592,12 @@ with block:
         update_reference_bookmaker,
         inputs=[bk_dropdown, state],
         outputs=[state, league_dropdown],
+    )
+
+    bet_type_dropdown.select(
+        update_bet_type,
+        inputs=[bet_type_dropdown, state],
+        outputs=[state],
     )
 
     all_bets_must_match.select(

@@ -17,6 +17,7 @@ from sqlalchemy import (
     type_coerce,
     join,
     text,
+    any_, ARRAY,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +60,7 @@ class FixtureQueryParams:
     deviation_direction: DeviationDirection = DEFAULT_DEVIATION_DIRECTION
     all_bets_must_match: bool = True
     league_ids: list[int] | None = None
+    bet_types: list[str] | None = None
 
 
 # def _get_select_filtered_fixtures(
@@ -524,6 +526,19 @@ def _get_select_filtered_fixtures_jsonb(
         .where(Fixture.date > now())
     )
 
+    # trigger should be checked against bet types that it contains any substring from it
+    if params.bet_types:
+        bet_types = [f"%{bet_type}%" for bet_type in params.bet_types]
+        # it seems sqlalchemy doesn't natively support ANY(ARRAY) syntax
+
+        # final_cte.c.trigger to use in text() is needed to prevent sqlalchemy from adding cte prefix
+
+        query_str = final_cte.c.trigger.name + " ILIKE ANY(ARRAY" + str(bet_types) + ")"
+
+        final_cte = final_cte.where(text(query_str))
+
+        # final_cte = final_cte.where(final_cte.c.trigger.ilike(any_(bet_types)))
+
     if params.league_ids:
         final_cte = final_cte.where(Fixture.league_id.in_(params.league_ids))
 
@@ -539,8 +554,8 @@ def _get_select_filtered_fixtures_jsonb(
 
     stmt = stmt.options(expression)
 
-    # stmt = stmt.options(expression)
-    print(stmt.compile(compile_kwargs={"literal_binds": True}))
+    # print(stmt.compile(compile_kwargs={"literal_binds": True}))
+    # print(params)
 
     return stmt
 

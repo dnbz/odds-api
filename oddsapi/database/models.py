@@ -56,19 +56,39 @@ class Bet(Base):
     first_half_outcomes: Mapped[dict] = mapped_column(
         MutableDict.as_mutable(JSONB), nullable=True
     )
+
+    second_half_outcomes: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(JSONB), nullable=True
+    )
+
     # jsonb with gin index
     totals: Mapped[dict] = mapped_column(MutableList.as_mutable(JSONB), nullable=True)
+
+    first_half_totals: Mapped[dict] = mapped_column(
+        MutableList.as_mutable(JSONB), nullable=True
+    )
 
     handicaps: Mapped[dict] = mapped_column(
         MutableList.as_mutable(JSONB), nullable=True
     )
 
+    first_half_handicaps: Mapped[dict] = mapped_column(
+        MutableList.as_mutable(JSONB), nullable=True
+    )
+
     __table_args__ = (
         Index("idx_gin_totals", totals, postgresql_using="gin"),
+        Index("idx_gin_first_half_totals", first_half_totals, postgresql_using="gin"),
         Index("idx_gin_handicaps", handicaps, postgresql_using="gin"),
+        Index(
+            "idx_gin_first_half_handicaps", first_half_handicaps, postgresql_using="gin"
+        ),
         Index("idx_gin_outcomes", outcomes, postgresql_using="gin"),
         Index(
             "idx_gin_first_half_outcomes", first_half_outcomes, postgresql_using="gin"
+        ),
+        Index(
+            "idx_gin_second_half_outcomes", second_half_outcomes, postgresql_using="gin"
         ),
     )
 

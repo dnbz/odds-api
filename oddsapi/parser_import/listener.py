@@ -13,7 +13,8 @@ from oddsapi.database.data_models import (
     BetcityEvent,
     FonbetEvent,
     MarathonEvent,
-    PinnacleEvent, CommonEvent,
+    PinnacleEvent,
+    CommonEvent,
 )
 from oddsapi.database.init import SessionLocal
 from oddsapi.database.models import Bet
@@ -23,7 +24,10 @@ from oddsapi.database.repository.bet import (
 )
 from oddsapi.database.repository.fixture import find_fixture_ilike, find_fixture_partial
 from oddsapi.helpers import configure_logging
-from oddsapi.parser_import.convert import convert_object_key_totals
+from oddsapi.parser_import.convert import (
+    convert_object_key_totals,
+    convert_object_key_first_half_totals,
+)
 
 T = TypeVar("T", bound=BetcityEvent | FonbetEvent | MarathonEvent | PinnacleEvent)
 
@@ -66,9 +70,8 @@ class ParserListener(ABC):
     def event_queue(self) -> str:
         pass
 
-    @property
     @abstractmethod
-    def convert_bet(self) -> Bet:
+    def convert_bet(self, event, event_date, fixture) -> Bet:
         pass
 
     async def get_event(self) -> T:
@@ -81,6 +84,7 @@ class ParserListener(ABC):
             event = self.event_cls(**json.loads(data))
         else:
             data = await self.redis.brpop([self.event_queue])
+            print(data[1])
             event = self.event_cls(**json.loads(data[1]))
 
         return event
@@ -188,7 +192,8 @@ class BetcityListener(ParserListener):
         return "betcity"
 
     def convert_bet(self, event: BetcityEvent, event_date, fixture):
-        return event
+        processed_event = convert_object_key_first_half_totals(event)
+        return processed_event
 
 
 class PinnacleListener(ParserListener):
@@ -200,8 +205,10 @@ class PinnacleListener(ParserListener):
     def event_queue(self):
         return "pinnacle"
 
-    def convert_bet(self, event: BetcityEvent, event_date, fixture):
-        return convert_object_key_totals(event)
+    def convert_bet(self, event: PinnacleEvent, event_date, fixture):
+        processed_event = convert_object_key_totals(event)
+        processed_event = convert_object_key_first_half_totals(processed_event)
+        return processed_event
 
 
 class MarathonListener(ParserListener):
@@ -213,8 +220,10 @@ class MarathonListener(ParserListener):
     def event_queue(self):
         return "marathon"
 
-    def convert_bet(self, event: BetcityEvent, event_date, fixture):
-        return convert_object_key_totals(event)
+    def convert_bet(self, event: MarathonEvent, event_date, fixture):
+        processed_event = convert_object_key_totals(event)
+        processed_event = convert_object_key_first_half_totals(processed_event)
+        return processed_event
 
 
 class FonbetListener(ParserListener):

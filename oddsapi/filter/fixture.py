@@ -6,22 +6,14 @@ from sqlalchemy import (
     select,
     or_,
     and_,
-    true,
-    case,
     literal_column,
-    union_all,
-    literal,
-    not_,
     lateral,
-    cast,
     type_coerce,
-    join,
     text,
-    any_, ARRAY,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, with_expression, aliased
+from sqlalchemy.orm import joinedload, with_expression
 from sqlalchemy.sql.functions import func, now
 
 from oddsapi.database.models import Bet, Fixture
@@ -232,6 +224,35 @@ def _get_select_filtered_fixtures_jsonb(
     ).cte("totals_reference")
 
     # also meh, type coercion is needed to get the jsonb_array_elements to work
+    first_half_totals_elem = type_coerce(
+        func.jsonb_array_elements(Bet.first_half_totals).column_valued(
+            "first_half_totals_elem"
+        ),
+        JSONB,
+    )
+
+    first_half_totals_table = lateral(
+        func.jsonb_array_elements(Bet.first_half_totals).table_valued(
+            "first_half_totals_elem"
+        )
+    ).alias("first_half_totals_elem")
+
+    first_half_totals_reference = (
+        select(
+            Bet.fixture_id,
+            first_half_totals_elem["total"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("total"),
+            first_half_totals_elem["total_over"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("total_over"),
+            first_half_totals_elem["total_under"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("total_under"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("first_half_totals_reference")
+
+    # also meh, type coercion is needed to get the jsonb_array_elements to work
     handicaps_elem = type_coerce(
         func.jsonb_array_elements(Bet.handicaps).column_valued("handicaps_elem"), JSONB
     )
@@ -248,6 +269,31 @@ def _get_select_filtered_fixtures_jsonb(
             handicaps_elem["handicap"].label("handicap"),
         ).where(Bet.bookmaker == params.reference_bookmaker)
     ).cte("handicaps_reference")
+
+    # also meh, type coercion is needed to get the jsonb_array_elements to work
+    first_half_handicaps_elem = type_coerce(
+        func.jsonb_array_elements(Bet.first_half_handicaps).column_valued(
+            "first_half_handicaps_elem"
+        ),
+        JSONB,
+    )
+
+    first_half_handicaps_table = lateral(
+        func.jsonb_array_elements(Bet.first_half_handicaps).table_valued(
+            "first_half_handicaps_elem"
+        )
+    ).alias("first_half_handicaps_elem")
+
+    first_half_handicaps_reference = (
+        select(
+            Bet.fixture_id,
+            first_half_handicaps_elem["coef"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("coef"),
+            first_half_handicaps_elem["type"].label("type"),
+            first_half_handicaps_elem["handicap"].label("handicap"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("first_half_handicaps_reference")
 
     outcomes_reference = (
         select(
@@ -276,6 +322,21 @@ def _get_select_filtered_fixtures_jsonb(
             .label("away_team"),
         ).where(Bet.bookmaker == params.reference_bookmaker)
     ).cte("first_half_outcomes_reference")
+
+    second_half_outcomes_reference = (
+        select(
+            Bet.fixture_id,
+            Bet.second_half_outcomes["home_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("home_team"),
+            Bet.second_half_outcomes["draw"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("draw"),
+            Bet.second_half_outcomes["away_team"]
+            .astext.cast(sqlalchemy.Numeric)
+            .label("away_team"),
+        ).where(Bet.bookmaker == params.reference_bookmaker)
+    ).cte("second_half_outcomes_reference")
 
     # sqlalchemy is bad
     totals_elem_literal = literal_column("totals_elem", type_=JSONB)
@@ -330,6 +391,64 @@ def _get_select_filtered_fixtures_jsonb(
         )
     ).cte("totals_comparison")
 
+    first_half_totals_elem_literal = literal_column(
+        "first_half_totals_elem", type_=JSONB
+    )
+    first_half_totals_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    get_comparison_clause(
+                        params,
+                        first_half_totals_reference.c.total_over,
+                        first_half_totals_elem_literal["total_over"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("first_half_totals over ")
+                    + first_half_totals_elem_literal["total"].astext,
+                ),
+                (
+                    get_comparison_clause(
+                        params,
+                        first_half_totals_reference.c.total_under,
+                        first_half_totals_elem_literal["total_under"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("first_half_totals under ")
+                    + first_half_totals_elem_literal["total"].astext,
+                ),
+            ).label("trigger"),
+        )
+        .join_from(Bet, first_half_totals_table, text("true"))
+        .join(
+            first_half_totals_reference,
+            (Bet.fixture_id == first_half_totals_reference.c.fixture_id)
+            & (
+                first_half_totals_elem_literal["total"].astext.cast(sqlalchemy.Numeric)
+                == first_half_totals_reference.c.total
+            ),
+        )
+        .where(
+            get_comparison_clause(
+                params,
+                first_half_totals_reference.c.total_over,
+                first_half_totals_elem_literal["total_over"].astext.cast(
+                    sqlalchemy.Numeric
+                ),
+            )
+            | get_comparison_clause(
+                params,
+                first_half_totals_reference.c.total_under,
+                first_half_totals_elem_literal["total_under"].astext.cast(
+                    sqlalchemy.Numeric
+                ),
+            )
+        )
+    ).cte("first_half_totals_comparison")
+
     # sqlalchemy is bad
     handicaps_elem_literal = literal_column("handicaps_elem", type_=JSONB)
     handicaps_comparison = (
@@ -363,6 +482,51 @@ def _get_select_filtered_fixtures_jsonb(
             )
         )
     ).cte("handicaps_comparison")
+
+    first_half_handicaps_elem_literal = literal_column(
+        "first_half_handicaps_elem", type_=JSONB
+    )
+    first_half_handicaps_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    get_comparison_clause(
+                        params,
+                        first_half_handicaps_reference.c.coef,
+                        first_half_handicaps_elem_literal["coef"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("first_half_handicaps ")
+                    + first_half_handicaps_elem_literal["handicap"].astext
+                    # + first_half_handicaps_elem_literal["type"].astext,
+                ),
+            ).label("trigger"),
+        )
+        .join_from(Bet, first_half_handicaps_table, text("true"))
+        .join(
+            first_half_handicaps_reference,
+            (Bet.fixture_id == first_half_handicaps_reference.c.fixture_id)
+            & (
+                first_half_handicaps_elem_literal["type"]
+                == first_half_handicaps_reference.c.type
+            )
+            & (
+                first_half_handicaps_elem_literal["handicap"]
+                == first_half_handicaps_reference.c.handicap
+            ),
+        )
+        .where(
+            get_comparison_clause(
+                params,
+                first_half_handicaps_reference.c.coef,
+                first_half_handicaps_elem_literal["coef"].astext.cast(
+                    sqlalchemy.Numeric
+                ),
+            )
+        )
+    ).cte("first_half_handicaps_comparison")
 
     outcomes_comparison_condition_clauses = [
         get_comparison_clause(
@@ -400,15 +564,39 @@ def _get_select_filtered_fixtures_jsonb(
         ),
     ]
 
+    second_half_outcomes_comparison_condition_clauses = [
+        get_comparison_clause(
+            params,
+            second_half_outcomes_reference.c.home_team,
+            Bet.second_half_outcomes["home_team"].astext.cast(sqlalchemy.Numeric),
+        ),
+        get_comparison_clause(
+            params,
+            second_half_outcomes_reference.c.draw,
+            Bet.second_half_outcomes["draw"].astext.cast(sqlalchemy.Numeric),
+        ),
+        get_comparison_clause(
+            params,
+            second_half_outcomes_reference.c.away_team,
+            Bet.second_half_outcomes["away_team"].astext.cast(sqlalchemy.Numeric),
+        ),
+    ]
+
     if params.all_bets_must_match:
         outcomes_comparison_condition = and_(*outcomes_comparison_condition_clauses)
         first_half_outcomes_comparison_condition = and_(
             *first_half_outcomes_comparison_condition_clauses
         )
+        second_half_outcomes_comparison_condition = and_(
+            *second_half_outcomes_comparison_condition_clauses
+        )
     else:
         outcomes_comparison_condition = or_(*outcomes_comparison_condition_clauses)
         first_half_outcomes_comparison_condition = or_(
             *first_half_outcomes_comparison_condition_clauses
+        )
+        second_half_outcomes_comparison_condition = or_(
+            *second_half_outcomes_comparison_condition_clauses
         )
 
     outcomes_comparison = (
@@ -490,6 +678,50 @@ def _get_select_filtered_fixtures_jsonb(
         .where(first_half_outcomes_comparison_condition)
     ).cte("first_half_outcomes_comparison")
 
+    second_half_outcomes_comparison = (
+        select(
+            Bet.fixture_id,
+            sqlalchemy.case(
+                (
+                    get_comparison_clause(
+                        params,
+                        second_half_outcomes_reference.c.home_team,
+                        Bet.second_half_outcomes["home_team"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("second_half_outcomes home_team"),
+                ),
+                (
+                    get_comparison_clause(
+                        params,
+                        second_half_outcomes_reference.c.draw,
+                        Bet.second_half_outcomes["draw"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("second_half_outcomes draw"),
+                ),
+                (
+                    get_comparison_clause(
+                        params,
+                        second_half_outcomes_reference.c.away_team,
+                        Bet.second_half_outcomes["away_team"].astext.cast(
+                            sqlalchemy.Numeric
+                        ),
+                    ),
+                    sqlalchemy.literal("second_half_outcomes away_team"),
+                ),
+            ).label("trigger"),
+        )
+        .join(
+            second_half_outcomes_reference,
+            (Bet.fixture_id == second_half_outcomes_reference.c.fixture_id)
+            & (Bet.bookmaker != params.reference_bookmaker),
+        )
+        .where(second_half_outcomes_comparison_condition)
+    ).cte("second_half_outcomes_comparison")
+
     combined_triggers = (
         select(outcomes_comparison.c.fixture_id, outcomes_comparison.c.trigger)
         .where(outcomes_comparison.c.trigger != None)  # noqa
@@ -500,13 +732,31 @@ def _get_select_filtered_fixtures_jsonb(
             ).where(
                 first_half_outcomes_comparison.c.trigger != None  # noqa
             ),
+            select(
+                second_half_outcomes_comparison.c.fixture_id,
+                second_half_outcomes_comparison.c.trigger,
+            ).where(
+                second_half_outcomes_comparison.c.trigger != None  # noqa
+            ),
             select(totals_comparison.c.fixture_id, totals_comparison.c.trigger).where(
                 totals_comparison.c.trigger != None  # noqa
+            ),
+            select(
+                first_half_totals_comparison.c.fixture_id,
+                first_half_totals_comparison.c.trigger,
+            ).where(
+                first_half_totals_comparison.c.trigger != None  # noqa
             ),
             select(
                 handicaps_comparison.c.fixture_id, handicaps_comparison.c.trigger
             ).where(
                 handicaps_comparison.c.trigger != None  # noqa
+            ),
+            select(
+                first_half_handicaps_comparison.c.fixture_id,
+                first_half_handicaps_comparison.c.trigger,
+            ).where(
+                first_half_handicaps_comparison.c.trigger != None  # noqa
             ),
         )
     ).cte("combined_triggers")
@@ -531,7 +781,8 @@ def _get_select_filtered_fixtures_jsonb(
         bet_types = [f"%{bet_type}%" for bet_type in params.bet_types]
         # it seems sqlalchemy doesn't natively support ANY(ARRAY) syntax
 
-        # final_cte.c.trigger to use in text() is needed to prevent sqlalchemy from adding cte prefix
+        # final_cte.c.trigger is needed to be in text()
+        # in order to prevent sqlalchemy from adding cte prefix
 
         query_str = final_cte.c.trigger.name + " ILIKE ANY(ARRAY" + str(bet_types) + ")"
 

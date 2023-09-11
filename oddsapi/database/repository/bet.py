@@ -68,13 +68,19 @@ async def upsert_bet(
 
     if event.handicap_odds:
         bet.handicaps = normalize_handicaps(event.handicap_odds)
+    if event.first_half_handicap_odds:
+        bet.first_half_handicaps = normalize_handicaps(event.first_half_handicap_odds)
     # only if it isn't an empty
     if event.first_half_outcome_odds:
         bet.first_half_outcomes = event.first_half_outcome_odds
+    if event.second_half_outcome_odds:
+        bet.second_half_outcomes = event.second_half_outcome_odds
+    if event.first_half_total_odds:
+        bet.first_half_totals = event.first_half_total_odds
 
     session.add(bet)
     logging.log(
-        5, f"imported bet for betcity with fixture id {fixture.id} successfully"
+        5, f"imported bet with fixture id {fixture.id} successfully"
     )
 
     return update

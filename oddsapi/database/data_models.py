@@ -29,10 +29,13 @@ class CommonEvent:
     datetime: str
     home_team_name: str
     away_team_name: str
-    handicap_odds: object | None
-    total_odds: list[TotalOdds] | None
-    first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
+    first_half_outcome_odds: OutcomeOdds | None
+    second_half_outcome_odds: OutcomeOdds | None
+    handicap_odds: object | None
+    first_half_handicap_odds: object | None
+    total_odds: list[TotalOdds] | None
+    first_half_total_odds: list[TotalOdds] | None
     name: Optional[str] = None
 
 
@@ -42,10 +45,13 @@ class BetcityEvent:
     datetime: str
     home_team_name: str
     away_team_name: str
-    handicap_odds: object | None
-    total_odds: list[TotalOdds] | None
-    first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
+    first_half_outcome_odds: OutcomeOdds | None
+    second_half_outcome_odds: OutcomeOdds | None
+    handicap_odds: object | None
+    first_half_handicap_odds: object | None
+    total_odds: list[TotalOdds] | None
+    first_half_total_odds: list | None
     name: Optional[str] = None
 
 
@@ -55,10 +61,13 @@ class FonbetEvent:
     datetime: str
     home_team_name: str
     away_team_name: str
-    handicap_odds: object | None
-    total_odds: list[TotalOdds] | None
-    first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
+    first_half_outcome_odds: OutcomeOdds | None
+    second_half_outcome_odds: OutcomeOdds | None
+    handicap_odds: object | None
+    first_half_handicap_odds: object | None
+    total_odds: list[TotalOdds] | None
+    first_half_total_odds: list[TotalOdds] | None
     name: Optional[str] = None
 
 
@@ -68,10 +77,13 @@ class PinnacleEvent:
     datetime: str
     home_team_name: str
     away_team_name: str
-    handicap_odds: dict | None
-    total_odds: list | None
-    first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
+    first_half_outcome_odds: OutcomeOdds | None
+    second_half_outcome_odds: OutcomeOdds | None
+    handicap_odds: object | None
+    first_half_handicap_odds: object | None
+    total_odds: list | None
+    first_half_total_odds: list | None
     name: Optional[str] = None
 
 
@@ -81,8 +93,11 @@ class MarathonEvent:
     datetime: str
     home_team_name: str
     away_team_name: str
-    handicap_odds: dict | None
-    total_odds: list | None
-    first_half_outcome_odds: OutcomeOdds | None
     outcome_odds: OutcomeOdds
+    first_half_outcome_odds: OutcomeOdds | None
+    second_half_outcome_odds: OutcomeOdds | None
+    handicap_odds: dict | None
+    first_half_handicap_odds: object | None
+    total_odds: list | None
+    first_half_total_odds: list | None
     name: Optional[str] = None

@@ -25,7 +25,7 @@ fonbet-listener = { call = 'oddsapi.commands:fonbet_listener' }
 pinnacle-listener = { call = 'oddsapi.commands:pinnacle_listener' }
 marathon-listener = { call = 'oddsapi.commands:marathon_listener' }
 
-webui = 'python oddsapi/ui/gradioui.py'
+webui = { call = 'oddsapi.ui.gradioui:run' }
 webui-dev = 'gradio oddsapi/ui/gradioui.py'
 
 migrate = "alembic upgrade head"
